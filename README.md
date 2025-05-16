@@ -26,7 +26,47 @@ This theme uses a beautiful, harmonious palette:
 - Dark Teal: `#1e756a`
 - Slate Blue: `#536878`
 
+## One-Click Installation
+
+The easiest way to install this theme is using the provided installation scripts.
+
+### macOS/Linux One-Click Install
+
+1. Download this repository, open Terminal in the repository directory, and run:
+   ```bash
+   ./install.sh
+   ```
+
+2. The script will:
+   - Check and install Homebrew (macOS) or required packages (Linux)
+   - Install Oh My Posh if not already installed
+   - Install Hack Nerd Font if not already installed
+   - Configure your shell (.zshrc or .bashrc) automatically
+   - Apply the theme to your current session
+
+### Windows One-Click Install
+
+1. Download this repository, open PowerShell (ideally as Administrator), navigate to the repository directory, and run:
+   ```powershell
+   # You may need to allow script execution first
+   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+   
+   # Run the installer
+   .\install.ps1
+   ```
+
+2. The script will:
+   - Install Winget if not present (may require interaction)
+   - Install Windows Terminal if not present
+   - Install Git if not present
+   - Install Oh My Posh if not present
+   - Install Hack Nerd Font
+   - Configure PowerShell and Command Prompt automatically
+   - Apply the theme to your current session
+
 ## Complete Installation Guide
+
+If you prefer to install manually or encounter issues with the one-click installers, follow the detailed guide below.
 
 ### macOS Installation
 
