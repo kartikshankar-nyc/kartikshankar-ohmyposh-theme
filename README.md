@@ -6,14 +6,14 @@ A clean, informative prompt theme for Oh My Posh that works across multiple shel
 
 ## Features
 
-- Apple icon for macOS users
-- Username display with a person icon
-- Computer name with a computer icon
-- Root user indicator
-- Current directory path with folder icon
-- Git status information with Octocat icon and color indicators
-- Time display on the right side
-- Clean prompt character for input
+- **Apple icon for macOS users** ![Apple Icon](segment_images/apple_icon.png)
+- **Username display with a person icon** ![Username](segment_images/username.png)
+- **Computer name with a computer icon** ![Computer Name](segment_images/computer_name.png)
+- **Root user indicator** ![Root Indicator](segment_images/root_indicator.png)
+- **Current directory path with folder icon** ![Directory Path](segment_images/directory_path.png)
+- **Git status information with Octocat icon and color indicators** ![Git Status](segment_images/git_status.png)
+- **Time display on the right side** ![Time Display](segment_images/time_display.png)
+- **Clean prompt character for input** ![Prompt Character](segment_images/prompt_character.png)
 
 ## Color Palette
 
