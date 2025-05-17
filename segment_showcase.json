@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+  "console_title_template": "{{ .Shell }} in {{ .Folder }}",
+  "blocks": [
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "properties": {
+            "cache_duration": "none"
+          },
+          "template": " {{ .UserName }} ",
+          "foreground": "#ffffff",
+          "background": "#2a9d8f",
+          "type": "session",
+          "style": "diamond"
+        }
+      ]
+    }
+  ],
+  "version": 3,
+  "final_space": true
+}
