@@ -10,36 +10,52 @@ A clean, informative prompt theme for Oh My Posh that works across multiple shel
 
 <table>
   <tr>
-    <td width="30%"><strong>Apple icon for macOS users</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/apple_icon.png" alt="Apple Icon" width="100%"></td>
+    <td width="40%"><strong>Apple icon for macOS users</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/apple_icon.png" alt="Apple Icon" width="400">
+    </td>
   </tr>
   <tr>
-    <td width="30%"><strong>Username display with a person icon</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/username.png" alt="Username" width="100%"></td>
+    <td width="40%"><strong>Username display with a person icon</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/username.png" alt="Username" width="400">
+    </td>
   </tr>
   <tr>
-    <td width="30%"><strong>Computer name with a computer icon</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/computer_name.png" alt="Computer Name" width="100%"></td>
+    <td width="40%"><strong>Computer name with a computer icon</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/computer_name.png" alt="Computer Name" width="400">
+    </td>
   </tr>
   <tr>
-    <td width="30%"><strong>Root user indicator</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/root_indicator.png" alt="Root Indicator" width="100%"></td>
+    <td width="40%"><strong>Root user indicator</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/root_indicator.png" alt="Root Indicator" width="400">
+    </td>
   </tr>
   <tr>
-    <td width="30%"><strong>Current directory path with folder icon</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/directory_path.png" alt="Directory Path" width="100%"></td>
+    <td width="40%"><strong>Current directory path with folder icon</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/directory_path.png" alt="Directory Path" width="400">
+    </td>
   </tr>
   <tr>
-    <td width="30%"><strong>Git status information with Octocat icon</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/git_status.png" alt="Git Status" width="100%"></td>
+    <td width="40%"><strong>Git status information with Octocat icon</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/git_status.png" alt="Git Status" width="400">
+    </td>
   </tr>
   <tr>
-    <td width="30%"><strong>Time display on the right side</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/time_display.png" alt="Time Display" width="100%"></td>
+    <td width="40%"><strong>Time display on the right side</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/time_display.png" alt="Time Display" width="400">
+    </td>
   </tr>
   <tr>
-    <td width="30%"><strong>Clean prompt character for input</strong></td>
-    <td width="70%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/better_segments/prompt_character.png" alt="Prompt Character" width="100%"></td>
+    <td width="40%"><strong>Clean prompt character for input</strong></td>
+    <td width="60%">
+      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/prompt_character.png" alt="Prompt Character" width="400">
+    </td>
   </tr>
 </table>
 
