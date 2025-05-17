@@ -9,3 +9,12 @@ desktop.ini
 *.swp
 *.swo
 *~ 
+
+# Backup files
+*.bak
+
+# Unused image directories
+zoomed_segments/
+better_segments/
+high_res_segments/
+new_segment_images/ 
