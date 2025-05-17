@@ -2,62 +2,33 @@
 
 A clean, informative prompt theme for Oh My Posh that works across multiple shells with a beautiful color palette.
 
-<p align="center">
-  <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/preview.png" alt="Theme Preview" width="1200">
-</p>
+![Theme Preview](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/preview.png)
 
 ## Features
 
-<table>
-  <tr>
-    <td width="40%"><strong>Apple icon for macOS users</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/apple_icon.png" alt="Apple Icon" width="400">
-    </td>
-  </tr>
-  <tr>
-    <td width="40%"><strong>Username display with a person icon</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/username.png" alt="Username" width="400">
-    </td>
-  </tr>
-  <tr>
-    <td width="40%"><strong>Computer name with a computer icon</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/computer_name.png" alt="Computer Name" width="400">
-    </td>
-  </tr>
-  <tr>
-    <td width="40%"><strong>Root user indicator</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/root_indicator.png" alt="Root Indicator" width="400">
-    </td>
-  </tr>
-  <tr>
-    <td width="40%"><strong>Current directory path with folder icon</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/directory_path.png" alt="Directory Path" width="400">
-    </td>
-  </tr>
-  <tr>
-    <td width="40%"><strong>Git status information with Octocat icon</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/git_status.png" alt="Git Status" width="400">
-    </td>
-  </tr>
-  <tr>
-    <td width="40%"><strong>Time display on the right side</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/time_display.png" alt="Time Display" width="400">
-    </td>
-  </tr>
-  <tr>
-    <td width="40%"><strong>Clean prompt character for input</strong></td>
-    <td width="60%">
-      <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/prompt_character.png" alt="Prompt Character" width="400">
-    </td>
-  </tr>
-</table>
+### Apple icon for macOS users
+![Apple Icon](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/apple_icon.png)
+
+### Username display with a person icon
+![Username](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/username.png)
+
+### Computer name with a computer icon
+![Computer Name](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/computer_name.png)
+
+### Root user indicator
+![Root Indicator](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/root_indicator.png)
+
+### Current directory path with folder icon
+![Directory Path](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/directory_path.png)
+
+### Git status information with Octocat icon
+![Git Status](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/git_status.png)
+
+### Time display on the right side
+![Time Display](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/time_display.png)
+
+### Clean prompt character for input
+![Prompt Character](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/prompt_character.png)
 
 ## Color Palette
 
