@@ -8,14 +8,40 @@ A clean, informative prompt theme for Oh My Posh that works across multiple shel
 
 ## Features
 
-- **Apple icon for macOS users** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/apple_icon.png" alt="Apple Icon" width="600">
-- **Username display with a person icon** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/username.png" alt="Username" width="600">
-- **Computer name with a computer icon** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/computer_name.png" alt="Computer Name" width="600">
-- **Root user indicator** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/root_indicator.png" alt="Root Indicator" width="600">
-- **Current directory path with folder icon** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/directory_path.png" alt="Directory Path" width="600">
-- **Git status information with Octocat icon and color indicators** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/git_status.png" alt="Git Status" width="600">
-- **Time display on the right side** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/time_display.png" alt="Time Display" width="600">
-- **Clean prompt character for input** <img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/prompt_character.png" alt="Prompt Character" width="600">
+<table>
+  <tr>
+    <td width="50%"><strong>Apple icon for macOS users</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/apple_icon.png" alt="Apple Icon" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>Username display with a person icon</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/username.png" alt="Username" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>Computer name with a computer icon</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/computer_name.png" alt="Computer Name" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>Root user indicator</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/root_indicator.png" alt="Root Indicator" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>Current directory path with folder icon</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/directory_path.png" alt="Directory Path" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>Git status information with Octocat icon</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/git_status.png" alt="Git Status" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>Time display on the right side</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/time_display.png" alt="Time Display" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>Clean prompt character for input</strong></td>
+    <td width="50%"><img src="https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/prompt_character.png" alt="Prompt Character" width="100%"></td>
+  </tr>
+</table>
 
 ## Color Palette
 
