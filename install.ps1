@@ -1,5 +1,5 @@
-# Oh My Posh Theme Installer for Windows
-# Run as administrator for best results
+# Oh My Posh Theme Installer for Windows and macOS (PowerShell)
+# Run as administrator for best results on Windows
 
 # Function to print colored messages
 function Write-ColorMessage {
@@ -32,8 +32,28 @@ function Test-CommandExists {
     }
 }
 
-# Function to install Winget if not available
+# Function to detect the operating system
+function Get-OperatingSystem {
+    if ($IsWindows -or (!$IsLinux -and !$IsMacOS -and [System.Environment]::OSVersion.Platform -eq "Win32NT")) {
+        return "Windows"
+    }
+    elseif ($IsMacOS -or (!$IsLinux -and !$IsWindows -and [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX))) {
+        return "macOS"
+    }
+    elseif ($IsLinux -or (!$IsMacOS -and !$IsWindows -and [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux))) {
+        return "Linux"
+    }
+    else {
+        return "Unknown"
+    }
+}
+
+# Function to install Winget if not available (Windows only)
 function Install-Winget {
+    if (-not ($script:OS -eq "Windows")) {
+        return $true
+    }
+    
     if (Test-CommandExists winget) {
         Write-ColorMessage "Winget is already installed" "SUCCESS"
         return $true
@@ -42,7 +62,12 @@ function Install-Winget {
     Write-ColorMessage "Winget not found. Attempting to install..." "WARNING"
     
     # Check if we're on Windows 10 or later
-    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
+    if ($null -eq $osInfo) {
+        Write-ColorMessage "Unable to detect Windows version. Please install Winget manually." "ERROR"
+        return $false
+    }
+    
     $osVersion = [Version]$osInfo.Version
     
     if ($osVersion -lt [Version]"10.0.17763.0") {
@@ -73,8 +98,12 @@ function Install-Winget {
     }
 }
 
-# Function to install Windows Terminal if not available
+# Function to install Windows Terminal if not available (Windows only)
 function Install-WindowsTerminal {
+    if (-not ($script:OS -eq "Windows")) {
+        return
+    }
+    
     # Check if Windows Terminal is installed
     $terminalInstalled = $false
     
@@ -124,20 +153,42 @@ function Install-Git {
     
     Write-ColorMessage "Installing Git..."
     
-    # Try to install via winget
-    if (Test-CommandExists winget) {
-        winget install Git.Git --accept-source-agreements --accept-package-agreements
-        
-        # Add Git to PATH for current session
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        
-        Write-ColorMessage "Git installed successfully" "SUCCESS"
+    if ($script:OS -eq "Windows") {
+        # Try to install via winget
+        if (Test-CommandExists winget) {
+            winget install Git.Git --accept-source-agreements --accept-package-agreements
+            
+            # Add Git to PATH for current session
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+            
+            Write-ColorMessage "Git installed successfully" "SUCCESS"
+        }
+        else {
+            Write-ColorMessage "Opening Git download page..."
+            Start-Process "https://git-scm.com/download/win"
+            Write-ColorMessage "Please download and install Git, then press Enter to continue..." "WARNING"
+            Read-Host | Out-Null
+            
+            if (Test-CommandExists git) {
+                Write-ColorMessage "Git installation verified" "SUCCESS"
+            }
+            else {
+                Write-ColorMessage "Git installation could not be verified. Script will continue, but may fail later." "WARNING"
+            }
+        }
     }
-    else {
-        Write-ColorMessage "Opening Git download page..."
-        Start-Process "https://git-scm.com/download/win"
-        Write-ColorMessage "Please download and install Git, then press Enter to continue..." "WARNING"
-        Read-Host | Out-Null
+    elseif ($script:OS -eq "macOS") {
+        # Check for Homebrew
+        if (Test-CommandExists brew) {
+            Write-ColorMessage "Installing Git using Homebrew..."
+            brew install git
+        }
+        else {
+            Write-ColorMessage "Homebrew not found. Opening Git download page..."
+            Start-Process "https://git-scm.com/download/mac"
+            Write-ColorMessage "Please download and install Git, then press Enter to continue..." "WARNING"
+            Read-Host | Out-Null
+        }
         
         if (Test-CommandExists git) {
             Write-ColorMessage "Git installation verified" "SUCCESS"
@@ -145,6 +196,39 @@ function Install-Git {
         else {
             Write-ColorMessage "Git installation could not be verified. Script will continue, but may fail later." "WARNING"
         }
+    }
+}
+
+# Function to install Homebrew on macOS
+function Install-Homebrew {
+    if (-not ($script:OS -eq "macOS")) {
+        return
+    }
+    
+    if (Test-CommandExists brew) {
+        Write-ColorMessage "Homebrew is already installed" "SUCCESS"
+        return
+    }
+    
+    Write-ColorMessage "Installing Homebrew..."
+    try {
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        
+        # Add Homebrew to PATH for the current session
+        if ((uname -m) -eq "arm64") {
+            $homebrewPath = "/opt/homebrew/bin"
+        }
+        else {
+            $homebrewPath = "/usr/local/bin"
+        }
+        
+        # Update path for current session
+        $env:PATH = "$homebrewPath:$env:PATH"
+        
+        Write-ColorMessage "Homebrew installed successfully" "SUCCESS"
+    }
+    catch {
+        Write-ColorMessage "Failed to install Homebrew: $_" "ERROR"
     }
 }
 
@@ -157,54 +241,250 @@ function Install-OhMyPosh {
     
     Write-ColorMessage "Installing Oh My Posh..."
     
-    # Try to install via winget
-    if (Test-CommandExists winget) {
-        winget install JanDeDobbeleer.OhMyPosh --accept-source-agreements --accept-package-agreements
-        
-        # Add Oh My Posh to PATH for current session
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        
-        Write-ColorMessage "Oh My Posh installed successfully" "SUCCESS"
-    }
-    else {
-        # Fallback to direct installation
-        Write-ColorMessage "Installing Oh My Posh using installer script..."
-        
-        Set-ExecutionPolicy Bypass -Scope Process -Force
-        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://ohmyposh.dev/install.ps1'))
-        
-        if (Test-CommandExists oh-my-posh) {
+    if ($script:OS -eq "Windows") {
+        # Try to install via winget
+        if (Test-CommandExists winget) {
+            winget install JanDeDobbeleer.OhMyPosh --accept-source-agreements --accept-package-agreements
+            
+            # Add Oh My Posh to PATH for current session
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+            
             Write-ColorMessage "Oh My Posh installed successfully" "SUCCESS"
         }
         else {
-            Write-ColorMessage "Oh My Posh installation failed. Please install manually." "ERROR"
-            exit 1
+            # Fallback to direct installation
+            Write-ColorMessage "Installing Oh My Posh using installer script..."
+            
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://ohmyposh.dev/install.ps1'))
+            
+            if (Test-CommandExists oh-my-posh) {
+                Write-ColorMessage "Oh My Posh installed successfully" "SUCCESS"
+            }
+            else {
+                Write-ColorMessage "Oh My Posh installation failed. Please install manually." "ERROR"
+                exit 1
+            }
         }
     }
+    elseif ($script:OS -eq "macOS") {
+        # Install on macOS
+        if (Test-CommandExists brew) {
+            Write-ColorMessage "Installing Oh My Posh using Homebrew..."
+            brew install oh-my-posh
+        }
+        else {
+            # Fallback to direct installation
+            Write-ColorMessage "Installing Oh My Posh using installer script..."
+            
+            try {
+                Invoke-Expression (Invoke-RestMethod -Uri https://ohmyposh.dev/install.ps1)
+                
+                if (Test-CommandExists oh-my-posh) {
+                    Write-ColorMessage "Oh My Posh installed successfully" "SUCCESS"
+                }
+                else {
+                    Write-ColorMessage "Oh My Posh installation failed. Please install manually." "ERROR"
+                    exit 1
+                }
+            }
+            catch {
+                Write-ColorMessage "Failed to install Oh My Posh: $_" "ERROR"
+                exit 1
+            }
+        }
+    }
+}
+
+# Function to install bundled Nerd Fonts
+function Install-BundledNerdFonts {
+    Write-ColorMessage "Using bundled Nerd Fonts as fallback..." "INFO"
+    
+    # Get the script's directory
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $fontsDir = Join-Path -Path $scriptDir -ChildPath "fonts"
+    
+    if (-not (Test-Path -Path $fontsDir -PathType Container)) {
+        Write-ColorMessage "Bundled fonts directory not found at: $fontsDir" "ERROR"
+        return $false
+    }
+    
+    # Check if there are font files in the directory
+    $fontFiles = Get-ChildItem -Path $fontsDir -Filter "*.ttf" -ErrorAction SilentlyContinue
+    if ($fontFiles.Count -eq 0) {
+        Write-ColorMessage "No bundled font files found in: $fontsDir" "ERROR"
+        return $false
+    }
+    
+    if ($script:OS -eq "Windows") {
+        # On Windows, we need to use the shell to install fonts
+        Write-ColorMessage "Installing bundled fonts on Windows..."
+        
+        # Windows font directory
+        $fontDestination = Join-Path $env:windir "Fonts"
+        
+        # Registry key for font registration
+        $fontRegistryPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+        
+        # Check for admin rights
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        
+        if (-not $isAdmin) {
+            Write-ColorMessage "Administrator privileges required to install fonts system-wide." "WARNING"
+            Write-ColorMessage "Would you like to open the fonts folder for manual installation? (y/n)"
+            $response = Read-Host
+            if ($response -eq "y") {
+                # Open the fonts directory for manual installation
+                Invoke-Item $fontsDir
+                Write-ColorMessage "Please install the fonts manually by selecting all files, right-clicking, and selecting 'Install'" "INFO"
+                Write-ColorMessage "Press Enter when done..." "INFO"
+                Read-Host | Out-Null
+                return $true
+            }
+            return $false
+        }
+        
+        # Install fonts with admin rights
+        foreach ($fontFile in $fontFiles) {
+            $fontName = [System.IO.Path]::GetFileNameWithoutExtension($fontFile.Name)
+            $fontSourcePath = $fontFile.FullName
+            $fontDestPath = Join-Path -Path $fontDestination -ChildPath $fontFile.Name
+            
+            try {
+                # Copy the font to the Windows Fonts folder
+                Copy-Item -Path $fontSourcePath -Destination $fontDestPath -Force
+                
+                # Register the font in the registry
+                New-ItemProperty -Path $fontRegistryPath -Name "$fontName (TrueType)" -Value $fontFile.Name -PropertyType String -Force | Out-Null
+                
+                Write-ColorMessage "Installed font: $fontName" "SUCCESS"
+            }
+            catch {
+                Write-ColorMessage "Failed to install font $fontName`: $_" "ERROR"
+            }
+        }
+    }
+    elseif ($script:OS -eq "macOS") {
+        # On macOS, copy fonts to ~/Library/Fonts
+        Write-ColorMessage "Installing bundled fonts to macOS user fonts directory..."
+        
+        $userFontsDir = Join-Path -Path $HOME -ChildPath "Library/Fonts"
+        if (-not (Test-Path -Path $userFontsDir -PathType Container)) {
+            New-Item -Path $userFontsDir -ItemType Directory -Force | Out-Null
+        }
+        
+        foreach ($fontFile in $fontFiles) {
+            $fontName = $fontFile.Name
+            $fontDestPath = Join-Path -Path $userFontsDir -ChildPath $fontName
+            
+            try {
+                Copy-Item -Path $fontFile.FullName -Destination $fontDestPath -Force
+                Write-ColorMessage "Installed font: $fontName" "SUCCESS"
+            }
+            catch {
+                Write-ColorMessage "Failed to install font $fontName`: $_" "ERROR"
+            }
+        }
+    }
+    
+    Write-ColorMessage "Bundled fonts installed successfully" "SUCCESS"
+    return $true
 }
 
 # Function to install Nerd Font
 function Install-NerdFont {
     Write-ColorMessage "Checking for Nerd Font..."
+    $fontInstalled = $false
     
     # Use Oh My Posh to install Hack Nerd Font
-    if (-not (Test-Path -Path "$env:LOCALAPPDATA\oh-my-posh\fonts\Hack.zip" -PathType Leaf)) {
-        Write-ColorMessage "Installing Hack Nerd Font..."
-        oh-my-posh font install Hack
-        Write-ColorMessage "Hack Nerd Font installed successfully" "SUCCESS"
+    if ($script:OS -eq "Windows") {
+        if (-not (Test-Path -Path "$env:LOCALAPPDATA\oh-my-posh\fonts\Hack.zip" -PathType Leaf)) {
+            Write-ColorMessage "Installing Hack Nerd Font..."
+            try {
+                oh-my-posh font install Hack
+                $fontInstalled = $true
+                Write-ColorMessage "Hack Nerd Font installed successfully" "SUCCESS"
+            }
+            catch {
+                Write-ColorMessage "Failed to install Hack Nerd Font via Oh My Posh: $_" "WARNING"
+                Write-ColorMessage "Trying to use bundled fonts..." "INFO"
+                $fontInstalled = Install-BundledNerdFonts
+            }
+        }
+        else {
+            $fontInstalled = $true
+            Write-ColorMessage "Hack Nerd Font is already installed" "SUCCESS"
+        }
     }
-    else {
-        Write-ColorMessage "Hack Nerd Font is already installed" "SUCCESS"
+    elseif ($script:OS -eq "macOS") {
+        # Check if font is installed via Homebrew
+        $fontInstalled = $false
+        
+        if (Test-CommandExists brew) {
+            $brewFonts = brew list --cask 2>$null
+            if ($brewFonts -match "font-hack-nerd-font") {
+                $fontInstalled = $true
+            }
+        }
+        
+        if (-not $fontInstalled) {
+            Write-ColorMessage "Installing Hack Nerd Font..."
+            if (Test-CommandExists brew) {
+                try {
+                    brew tap homebrew/cask-fonts
+                    brew install --cask font-hack-nerd-font
+                    $fontInstalled = $true
+                }
+                catch {
+                    Write-ColorMessage "Failed to install Hack Nerd Font via Homebrew: $_" "WARNING"
+                    Write-ColorMessage "Trying to use bundled fonts..." "INFO"
+                    $fontInstalled = Install-BundledNerdFonts
+                }
+            }
+            else {
+                # Use Oh My Posh font installer as fallback
+                try {
+                    oh-my-posh font install Hack
+                    $fontInstalled = $true
+                }
+                catch {
+                    Write-ColorMessage "Failed to install Hack Nerd Font via Oh My Posh: $_" "WARNING"
+                    Write-ColorMessage "Trying to use bundled fonts..." "INFO"
+                    $fontInstalled = Install-BundledNerdFonts
+                }
+            }
+            
+            if ($fontInstalled) {
+                Write-ColorMessage "Hack Nerd Font installed successfully" "SUCCESS"
+            }
+        }
+        else {
+            Write-ColorMessage "Hack Nerd Font is already installed" "SUCCESS"
+        }
     }
     
     # Reminder to configure terminal
-    Write-ColorMessage "Remember to configure your terminal to use 'Hack Nerd Font'" "WARNING"
+    if ($fontInstalled) {
+        Write-ColorMessage "Remember to configure your terminal to use 'Hack Nerd Font'" "INFO"
+    }
+    else {
+        Write-ColorMessage "Could not install Nerd Font through any method." "WARNING"
+        Write-ColorMessage "You'll need to install a Nerd Font manually from https://www.nerdfonts.com/" "WARNING"
+    }
+    
+    return $fontInstalled
 }
 
 # Function to clone the repository
 function Clone-Repository {
     # Create directory for Oh My Posh themes
-    $themesDir = Join-Path $env:USERPROFILE ".oh-my-posh-themes"
+    if ($script:OS -eq "Windows") {
+        $themesDir = Join-Path $env:USERPROFILE ".oh-my-posh-themes"
+    }
+    else {
+        $themesDir = Join-Path $HOME ".oh-my-posh-themes"
+    }
+    
     $repoDir = Join-Path $themesDir "kartikshankar-ohmyposh-theme"
     
     if (-not (Test-Path -Path $themesDir)) {
@@ -225,6 +505,12 @@ function Clone-Repository {
     }
     
     $script:themePath = Join-Path $repoDir "kartikshankar.omp.json"
+    
+    # Format path correctly for the current OS
+    if ($script:OS -eq "macOS") {
+        $script:themePath = $script:themePath.Replace("\", "/")
+    }
+    
     Write-ColorMessage "Theme path: $script:themePath" "SUCCESS"
 }
 
@@ -260,8 +546,12 @@ function Configure-PowerShell {
     }
 }
 
-# Function to configure Command Prompt
+# Function to configure Command Prompt (Windows only)
 function Configure-Cmd {
+    if (-not ($script:OS -eq "Windows")) {
+        return
+    }
+    
     Write-ColorMessage "Configuring Command Prompt..."
     
     # Create Lua script for CMD
@@ -289,6 +579,57 @@ load(io.popen('oh-my-posh init cmd --config "$($script:themePath.Replace('\', '/
     }
 }
 
+# Function to configure Git Bash (Windows only)
+function Configure-GitBash {
+    if (-not ($script:OS -eq "Windows")) {
+        return
+    }
+    
+    Write-ColorMessage "Configuring Git Bash..."
+    
+    # Path to .bashrc in Git Bash
+    $gitBashProfile = Join-Path $env:USERPROFILE ".bashrc"
+    
+    # Create the file if it doesn't exist
+    if (-not (Test-Path -Path $gitBashProfile)) {
+        New-Item -Path $gitBashProfile -ItemType File -Force | Out-Null
+    }
+    
+    # Prepare the config line - use forward slashes for Git Bash
+    $themePath = $script:themePath.Replace('\', '/')
+    $configLine = "eval `"$(oh-my-posh init bash --config '$themePath')`""
+    
+    # Check if the configuration is already in the file
+    $profileContent = Get-Content -Path $gitBashProfile -Raw -ErrorAction SilentlyContinue
+    
+    if ($profileContent -like "*$themePath*") {
+        Write-ColorMessage "Git Bash profile already configured to use the theme" "SUCCESS"
+    }
+    else {
+        # Check if profile already has Oh My Posh configuration
+        if ($profileContent -like "*oh-my-posh init*") {
+            Write-ColorMessage "Updating existing Oh My Posh configuration in Git Bash profile..."
+            $profileContent = ($profileContent -split "`n") | ForEach-Object {
+                if ($_ -match "oh-my-posh init") {
+                    $configLine
+                }
+                else {
+                    $_
+                }
+            }
+            $profileContent = $profileContent -join "`n"
+            Set-Content -Path $gitBashProfile -Value $profileContent
+        }
+        else {
+            Write-ColorMessage "Adding Oh My Posh configuration to Git Bash profile..."
+            Add-Content -Path $gitBashProfile -Value "`n# Oh My Posh configuration"
+            Add-Content -Path $gitBashProfile -Value $configLine
+        }
+        
+        Write-ColorMessage "Git Bash profile configured successfully" "SUCCESS"
+    }
+}
+
 # Function to apply theme to current PowerShell session
 function Apply-Theme {
     Write-ColorMessage "Applying theme to current PowerShell session..."
@@ -298,19 +639,30 @@ function Apply-Theme {
 
 # Main function
 function Main {
-    Write-Host "`n============== Kartik's Oh My Posh Theme Installer ==============`n" -ForegroundColor Magenta
+    # Detect OS
+    $script:OS = Get-OperatingSystem
+    
+    Write-Host "`n============== Kartik's Oh My Posh Theme Installer ($script:OS) ==============`n" -ForegroundColor Magenta
     
     Write-ColorMessage "Starting installation process..."
     
-    # Check if running as admin
-    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $isAdmin) {
-        Write-ColorMessage "Not running as administrator. Some installations might fail." "WARNING"
+    # Check if running as admin (Windows-specific)
+    if ($script:OS -eq "Windows") {
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        if (-not $isAdmin) {
+            Write-ColorMessage "Not running as administrator. Some installations might fail." "WARNING"
+        }
     }
     
-    # Install dependencies
-    Install-Winget
-    Install-WindowsTerminal
+    # Install dependencies based on OS
+    if ($script:OS -eq "Windows") {
+        Install-Winget
+        Install-WindowsTerminal
+    }
+    elseif ($script:OS -eq "macOS") {
+        Install-Homebrew
+    }
+    
     Install-Git
     Install-OhMyPosh
     Install-NerdFont
@@ -318,7 +670,12 @@ function Main {
     # Clone repository and configure shells
     Clone-Repository
     Configure-PowerShell
-    Configure-Cmd
+    
+    # OS-specific configurations
+    if ($script:OS -eq "Windows") {
+        Configure-Cmd
+        Configure-GitBash
+    }
     
     # Apply theme to current session
     Apply-Theme
@@ -326,7 +683,14 @@ function Main {
     Write-Host "`n============== Installation Complete ==============`n" -ForegroundColor Magenta
     Write-ColorMessage "If you don't see the theme applied correctly, please restart your terminal."
     Write-ColorMessage "Be sure to configure your terminal app to use 'Hack Nerd Font'."
-    Write-ColorMessage "For Windows Terminal, go to Settings > Profile > Appearance > Font Face > select 'Hack Nerd Font'"
+    
+    if ($script:OS -eq "Windows") {
+        Write-ColorMessage "For Windows Terminal, go to Settings > Profile > Appearance > Font Face > select 'Hack Nerd Font'"
+    }
+    elseif ($script:OS -eq "macOS") {
+        Write-ColorMessage "For Terminal.app, go to Terminal > Settings > Profiles > Font > select 'Hack Nerd Font'"
+        Write-ColorMessage "For iTerm2, go to iTerm2 > Settings > Profiles > Text > Font > select 'Hack Nerd Font'"
+    }
 }
 
 # Run the main function

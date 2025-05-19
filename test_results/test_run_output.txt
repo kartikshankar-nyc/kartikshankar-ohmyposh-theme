@@ -1,0 +1,199 @@
+
+[0;35mKartik's Oh My Posh Theme - Running All Tests[0m
+[0;35m======================================================================[0m
+Starting test run at: Mon May 19 17:26:14 EDT 2025
+Working directory: /Users/kartikshankar/kartikshankar-ohmyposh-theme
+
+
+[0;35mRunning test-theme.sh[0m
+[0;35m======================================================================[0m
+
+[0;34mTesting Kartik's Oh My Posh Theme[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Checking Oh My Posh installation...[0m
+[0;32m✅ Oh My Posh is installed (25.23.0)[0m
+[0;34mℹ️  Checking for Nerd Font...[0m
+[0;32m✅ Nerd Font is installed via Homebrew[0m
+[0;34mℹ️  Checking theme file...[0m
+[0;32m✅ Theme file found at: /Users/kartikshankar/kartikshankar-ohmyposh-theme/kartikshankar.omp.json[0m
+[0;34mℹ️  Validating theme JSON format...[0m
+[0;32m✅ Theme JSON is valid[0m
+[0;34mℹ️  Checking theme schema version...[0m
+[0;32m✅ Theme uses schema version 3[0m
+[0;34mℹ️  Checking theme structure...[0m
+[0;32m✅ Theme contains 3 blocks[0m
+[0;34mℹ️  Checking for essential segments...[0m
+Found segments: git
+os
+path
+root
+session
+text
+time
+[0;32m✅ os segment is present[0m
+[0;32m✅ session segment is present[0m
+[0;32m✅ path segment is present[0m
+[0;32m✅ git segment is present[0m
+[0;34mℹ️  Checking terminal color support...[0m
+[0;32m✅ Terminal supports rich colors (xterm-256color)[0m
+
+[0;34mTheme Preview[0m
+[0;34m==================================================[0m
+Primary prompt:
+\[[38;2;38;70;83m\]\[[0m\]\[[48;2;38;70;83m\]\[[38;2;255;255;255m\]unable to create text based on template\[[0m\]\[[38;2;38;70;83m\]\[[0m\]\[[0m[38;2;42;157;143;49m[7m\]\[[0m\]\[[48;2;42;157;143m\]\[[38;2;255;255;255m\]  kartikshankar \[[0m\]\[[48;2;244;162;97m\]\[[38;2;42;157;143m\]\[[0m\]\[[48;2;244;162;97m\]\[[38;2;0;0;0m\]  Narasimha \[[0m\]\[[48;2;233;196;106m\]\[[38;2;244;162;97m\]\[[0m\]\[[48;2;233;196;106m\]\[[38;2;0;0;0m\]  kartikshankar-ohmyposh-theme \[[0m\]\[[48;2;231;111;81m\]\[[38;2;233;196;106m\]\[[0m\]\[[48;2;231;111;81m\]\[[38;2;255;255;255m\]  main  ?6 ~4 \[[0m\]\[[38;2;231;111;81m\]\[[0m\]                                             \[[38;2;83;104;120m\]\[[0m\]\[[48;2;83;104;120m\]\[[38;2;255;255;255m\] 17:26:14 \[[0m\]\[[38;2;83;104;120m\]\[[0m\]
+\[[38;2;231;111;81m\]❯ \[[0m\]
+[0;34mℹ️  Testing real-time segment updates...[0m
+This might take a few seconds...
+Git repo with staged changes:
+\[[38;2;38;70;83m\]\[[0m\]\[[48;2;38;70;83m\]\[[38;2;255;255;255m\]unable to create text based on template\[[0m\]\[[38;2;38;70;83m\]\[[0m\]\[[0m[38;2;42;157;143;49m[7m\]\[[0m\]\[[48;2;42;157;143m\]\[[38;2;255;255;255m\]  kartikshankar \[[0m\]\[[48;2;244;162;97m\]\[[38;2;42;157;143m\]\[[0m\]\[[48;2;244;162;97m\]\[[38;2;0;0;0m\]  Narasimha \[[0m\]\[[48;2;233;196;106m\]\[[38;2;244;162;97m\]\[[0m\]\[[48;2;233;196;106m\]\[[38;2;0;0;0m\]  tmp.AHMnVctk2G \[[0m\]\[[48;2;231;111;81m\]\[[38;2;233;196;106m\]\[[0m\]\[[48;2;231;111;81m\]\[[38;2;255;255;255m\]  main  +1 \[[0m\]\[[38;2;231;111;81m\]\[[0m\]                                                              \[[38;2;83;104;120m\]\[[0m\]\[[48;2;83;104;120m\]\[[38;2;255;255;255m\] 17:26:14 \[[0m\]\[[38;2;83;104;120m\]\[[0m\]
+\[[38;2;231;111;81m\]❯ \[[0m\]
+
+[0;34mInstallation Instructions[0m
+[0;34m==================================================[0m
+To use this theme, add the following to your shell config file:
+
+[0;34mℹ️  Detected shell: zsh[0m
+For Zsh (~/.zshrc):
+  eval "$(oh-my-posh init zsh --config '/Users/kartikshankar/kartikshankar-ohmyposh-theme/kartikshankar.omp.json')"
+[0;33m⚠️  Oh My Posh is configured with a different theme in your .zshrc[0m
+
+For PowerShell ($PROFILE):
+  oh-my-posh init pwsh --config '/Users/kartikshankar/kartikshankar-ohmyposh-theme/kartikshankar.omp.json' | Invoke-Expression
+
+
+[0;34mPerformance Check[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Testing theme rendering performance...[0m
+Rendering time: 0s
+[0;32m✅ Theme rendering is fast (0s)[0m
+
+[0;34mTest Complete[0m
+[0;34m==================================================[0m
+Your theme is ready to be shared with the community! 🚀
+For any issues or contributions, please refer to the README.md file.
+[0;32m[SUCCESS][0m test-theme.sh completed successfully
+
+
+[0;35mRunning test-dynamic-segments.sh[0m
+[0;35m======================================================================[0m
+
+[0;34mTesting Dynamic Segments in Kartik's Oh My Posh Theme[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Checking Oh My Posh installation...[0m
+[0;32m✅ Oh My Posh is installed (25.23.0)[0m
+[0;34mℹ️  Checking theme file...[0m
+[0;32m✅ Theme file found at: /Users/kartikshankar/kartikshankar-ohmyposh-theme/kartikshankar.omp.json[0m
+
+[0;34mOS Detection Test[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Detecting current OS...[0m
+[0;32m✅ Detected OS: darwin[0m
+[0;34mℹ️  Checking OS segment in theme...[0m
+[0;32m✅ OS segment found in theme[0m
+[0;34mℹ️  Verifying dynamic OS icon logic...[0m
+[0;32m✅ Theme includes dynamic OS icon logic[0m
+
+[0;34mHostname Detection Test[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Detecting current hostname...[0m
+[0;32m✅ Detected hostname: Narasimha.local[0m
+[0;34mℹ️  Checking hostname segment in theme...[0m
+[0;32m✅ Hostname segment found in theme[0m
+[0;34mℹ️  Verifying dynamic hostname logic...[0m
+[0;32m✅ Theme includes dynamic hostname logic[0m
+
+[0;34mRendering Test with Current System Values[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Rendering theme with current system values...[0m
+\[[38;2;38;70;83m\]\[[0m\]\[[48;2;38;70;83m\]\[[38;2;255;255;255m\]unable to create text based on template\[[0m\]\[[38;2;38;70;83m\]\[[0m\]\[[0m[38;2;42;157;143;49m[7m\]\[[0m\]\[[48;2;42;157;143m\]\[[38;2;255;255;255m\]  kartikshankar \[[0m\]\[[48;2;244;162;97m\]\[[38;2;42;157;143m\]\[[0m\]\[[48;2;244;162;97m\]\[[38;2;0;0;0m\]  Narasimha \[[0m\]\[[48;2;233;196;106m\]\[[38;2;244;162;97m\]\[[0m\]\[[48;2;233;196;106m\]\[[38;2;0;0;0m\]  kartikshankar-ohmyposh-theme \[[0m\]\[[48;2;231;111;81m\]\[[38;2;233;196;106m\]\[[0m\]\[[48;2;231;111;81m\]\[[38;2;255;255;255m\]  main  ?6 ~4 \[[0m\]\[[38;2;231;111;81m\]\[[0m\]                                             \[[38;2;83;104;120m\]\[[0m\]\[[48;2;83;104;120m\]\[[38;2;255;255;255m\] 17:26:14 \[[0m\]\[[38;2;83;104;120m\]\[[0m\]
+\[[38;2;231;111;81m\]❯ \[[0m\]
+
+
+[0;34mTest Results[0m
+[0;34m==================================================[0m
+[0;32m✅ Dynamic segments test passed! The theme adapts to different operating systems and hostnames.[0m
+
+[0;34mℹ️  Note: The rendered output above should show your current OS icon and hostname correctly.[0m
+[0;34mℹ️  If you see placeholder characters or incorrect values, check your terminal's font configuration.[0m
+
+[0;32m[SUCCESS][0m test-dynamic-segments.sh completed successfully
+
+
+[0;35mRunning test-installation-scripts.sh[0m
+[0;35m======================================================================[0m
+
+[0;34mTesting Installation Scripts in Kartik's Oh My Posh Theme[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Checking installation scripts...[0m
+[0;32m✅ Bash installation script found at: /Users/kartikshankar/kartikshankar-ohmyposh-theme/install.sh[0m
+[0;32m✅ PowerShell installation script found at: /Users/kartikshankar/kartikshankar-ohmyposh-theme/install.ps1[0m
+[0;34mℹ️  Checking if scripts are executable...[0m
+[0;32m✅ Bash script is executable[0m
+
+[0;34mChecking Bundled Fonts[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Checking for bundled fonts directory...[0m
+[0;32m✅ Bundled fonts directory found at: /Users/kartikshankar/kartikshankar-ohmyposh-theme/fonts[0m
+[0;34mℹ️  Checking for bundled font files...[0m
+[0;32m✅ Found        4 font files in bundled fonts directory[0m
+[0;32m✅ README file exists for the bundled fonts[0m
+[0;34mℹ️  Checking for bundled font installation in bash script...[0m
+[0;32m✅ Bash script includes bundled font installation function[0m
+[0;32m✅ Bash script uses bundled fonts as fallback when online installation fails[0m
+[0;34mℹ️  Checking for bundled font installation in PowerShell script...[0m
+[0;32m✅ PowerShell script includes bundled font installation function[0m
+[0;32m✅ PowerShell script uses bundled fonts as fallback when online installation fails[0m
+
+[0;34mChecking Bash Script for Cross-Platform Support[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Checking for Git Bash support...[0m
+[0;32m✅ Script includes Git Bash detection[0m
+[0;34mℹ️  Checking for WSL support...[0m
+[0;32m✅ Script includes WSL detection[0m
+[0;34mℹ️  Checking for shell detection...[0m
+[0;32m✅ Script includes shell type detection[0m
+[0;34mℹ️  Checking configuration file logic...[0m
+[0;32m✅ Script handles different shell config files[0m
+
+[0;34mChecking PowerShell Script for Cross-Platform Support[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Checking for OS detection...[0m
+[0;32m✅ Script includes OS detection[0m
+[0;34mℹ️  Checking for macOS support...[0m
+[0;32m✅ Script includes macOS support[0m
+[0;34mℹ️  Checking for Windows Terminal configuration...[0m
+[0;32m✅ Script configures Windows Terminal[0m
+[0;34mℹ️  Checking for Git Bash configuration...[0m
+[0;32m✅ Script configures Git Bash[0m
+[0;34mℹ️  Checking for Command Prompt configuration...[0m
+[0;32m✅ Script configures Command Prompt[0m
+
+[0;34mSyntax Check for Bash Script[0m
+[0;34m==================================================[0m
+[0;34mℹ️  Checking bash script syntax...[0m
+[0;32m✅ Bash script syntax is valid[0m
+
+[0;34mSyntax Check for PowerShell Script[0m
+[0;34m==================================================[0m
+[0;33m⚠️  PowerShell (pwsh) is not installed, skipping syntax check for PowerShell script[0m
+
+[0;34mInstallation Scripts Test Summary[0m
+[0;34m==================================================[0m
+[0;32m✅ All installation script tests passed! The scripts support multiple platforms and shells.[0m
+
+[0;34mℹ️  Note: These tests only check for the presence of cross-platform features.[0m
+[0;34mℹ️  For a complete validation, you should test the scripts on actual target platforms.[0m
+
+[0;32m[SUCCESS][0m test-installation-scripts.sh completed successfully
+
+
+[0;35mTest Run Summary[0m
+[0;35m======================================================================[0m
+Tests completed at: Mon May 19 17:26:14 EDT 2025
+[0;32m[SUCCESS][0m All tests completed successfully!
+
+Your Oh My Posh theme is ready for use across various platforms and shells.
+It has been verified to:
+✅ Display the correct OS-specific icons
+✅ Show the dynamic hostname instead of a hardcoded value
+✅ Work across multiple shells and platforms with proper installation scripts

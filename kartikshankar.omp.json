@@ -9,7 +9,7 @@
                     "foreground": "#FFFFFF",
                     "leading_diamond": "\ue0b6",
                     "style": "diamond",
-                    "template": " \uf179 ",
+                    "template": " {{ if eq .Os \"windows\" }}\ue70f{{ else if eq .Os \"darwin\" }}\uf179{{ else if eq .Os \"linux\" }}\uf17c{{ else }}\uf17a{{ end }} ",
                     "trailing_diamond": "\ue0b0",
                     "type": "os"
                 },
@@ -26,8 +26,8 @@
                     "foreground": "#000000",
                     "powerline_symbol": "\ue0b0",
                     "style": "powerline",
-                    "template": " \uf109 Narasimha ",
-                    "type": "text"
+                    "template": " \uf109 {{ .HostName }} ",
+                    "type": "session"
                 },
                 {
                     "background": "#e76f51",
