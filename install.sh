@@ -35,11 +35,33 @@ detect_os() {
         OS="macOS"
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
         OS="Linux"
+    elif [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
+        OS="Windows"
+        IS_GIT_BASH=true
     else
         print_error "Unsupported OS: $OSTYPE"
         exit 1
     fi
     print_message "Detected OS: $OS"
+
+    # Detect if running in Windows Subsystem for Linux
+    if [[ -f /proc/version ]] && grep -q Microsoft /proc/version; then
+        print_message "Running in Windows Subsystem for Linux (WSL)"
+        IS_WSL=true
+    fi
+}
+
+# Function to detect shell
+detect_shell() {
+    # Get current shell
+    if [[ -n "$BASH_VERSION" ]]; then
+        CURRENT_SHELL="bash"
+    elif [[ -n "$ZSH_VERSION" ]]; then
+        CURRENT_SHELL="zsh"
+    else
+        CURRENT_SHELL=$(basename "$SHELL")
+    fi
+    print_message "Detected shell: $CURRENT_SHELL"
 }
 
 # Function to install Homebrew on macOS
@@ -93,6 +115,19 @@ install_oh_my_posh() {
         
         if [[ "$OS" == "macOS" ]]; then
             brew install oh-my-posh
+        elif [[ "$OS" == "Windows" && "$IS_GIT_BASH" == true ]]; then
+            # For Git Bash on Windows, recommend using the Windows installer
+            print_message "For Git Bash on Windows, it's recommended to install Oh My Posh using the Windows installer."
+            print_message "Would you like to open the Oh My Posh installer webpage? (y/n)"
+            read -r response
+            if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                start https://ohmyposh.dev/docs/installation/windows
+                print_message "Please install Oh My Posh and then press Enter to continue..."
+                read -r
+            else
+                print_message "Attempting to install Oh My Posh directly..."
+                curl -s https://ohmyposh.dev/install.sh | bash -s
+            fi
         else
             curl -s https://ohmyposh.dev/install.sh | bash -s
         fi
@@ -101,6 +136,55 @@ install_oh_my_posh() {
     else
         print_success "Oh My Posh is already installed"
     fi
+}
+
+# Function to install Nerd Font using bundled fonts in the repository
+install_bundled_fonts() {
+    print_message "Using bundled Nerd Fonts as fallback..."
+    
+    # Get the repository directory
+    REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    FONTS_DIR="$REPO_DIR/fonts"
+    
+    if [[ ! -d "$FONTS_DIR" ]]; then
+        print_error "Bundled fonts directory not found at: $FONTS_DIR"
+        return 1
+    fi
+    
+    # Check if there are font files in the directory
+    font_count=$(find "$FONTS_DIR" -name "*.ttf" | wc -l)
+    if [[ $font_count -eq 0 ]]; then
+        print_error "No bundled font files found in: $FONTS_DIR"
+        return 1
+    fi
+    
+    if [[ "$OS" == "macOS" ]]; then
+        # On macOS, copy fonts to ~/Library/Fonts
+        print_message "Installing bundled fonts to ~/Library/Fonts..."
+        mkdir -p ~/Library/Fonts
+        cp "$FONTS_DIR"/*.ttf ~/Library/Fonts/
+    elif [[ "$OS" == "Linux" ]] || [[ "$IS_WSL" == true ]]; then
+        # On Linux, copy fonts to ~/.local/share/fonts
+        print_message "Installing bundled fonts to ~/.local/share/fonts..."
+        mkdir -p ~/.local/share/fonts
+        cp "$FONTS_DIR"/*.ttf ~/.local/share/fonts/
+        
+        # Update font cache
+        fc-cache -fv > /dev/null
+    elif [[ "$OS" == "Windows" && "$IS_GIT_BASH" == true ]]; then
+        # For Git Bash on Windows
+        print_message "On Windows, fonts need to be installed manually."
+        print_message "Would you like to open the fonts directory to install manually? (y/n)"
+        read -r response
+        if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            explorer.exe "$(cygpath -w "$FONTS_DIR")"
+            print_message "Please install the fonts and then press Enter to continue..."
+            read -r
+        fi
+    fi
+    
+    print_success "Bundled fonts installed successfully"
+    return 0
 }
 
 # Function to install Nerd Font
@@ -114,7 +198,47 @@ install_nerd_font() {
         else
             print_message "Installing Hack Nerd Font..."
             brew tap homebrew/cask-fonts
-            brew install --cask font-hack-nerd-font
+            if brew install --cask font-hack-nerd-font; then
+                FONT_INSTALLED=true
+            else
+                print_warning "Failed to install Hack Nerd Font via Homebrew. Trying bundled fonts..."
+                if install_bundled_fonts; then
+                    FONT_INSTALLED=true
+                fi
+            fi
+        fi
+    elif [[ "$OS" == "Windows" && "$IS_GIT_BASH" == true ]]; then
+        # For Git Bash on Windows, recommend using the Oh My Posh font installer
+        if command_exists oh-my-posh; then
+            print_message "Would you like to install Hack Nerd Font? (y/n)"
+            read -r response
+            if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                if oh-my-posh font install Hack; then
+                    FONT_INSTALLED=true
+                else
+                    print_warning "Failed to install Hack Nerd Font via Oh My Posh. Trying bundled fonts..."
+                    if install_bundled_fonts; then
+                        FONT_INSTALLED=true
+                    fi
+                fi
+            else
+                print_warning "Skipping font installation. You'll need a Nerd Font for the theme to display correctly."
+                print_message "Would you like to install the bundled fonts instead? (y/n)"
+                read -r response
+                if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                    if install_bundled_fonts; then
+                        FONT_INSTALLED=true
+                    fi
+                fi
+            fi
+        else
+            print_warning "Oh My Posh not found. Trying to install bundled Nerd Fonts..."
+            if install_bundled_fonts; then
+                FONT_INSTALLED=true
+            else
+                print_warning "Please install a Nerd Font manually."
+                print_warning "Visit: https://www.nerdfonts.com/font-downloads"
+            fi
         fi
     else
         # For Linux, check if any Nerd Font is installed
@@ -125,21 +249,28 @@ install_nerd_font() {
             # Create fonts directory if it doesn't exist
             mkdir -p ~/.local/share/fonts
             
-            # Download and install Hack Nerd Font
-            curl -fLo "Hack Regular Nerd Font Complete.ttf" \
-                https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Hack/Regular/complete/Hack%20Regular%20Nerd%20Font%20Complete.ttf
-            
-            mv "Hack Regular Nerd Font Complete.ttf" ~/.local/share/fonts/
-            
-            # Update font cache
-            fc-cache -fv
+            # Try to download Hack Nerd Font
+            if curl -fLo "Hack Regular Nerd Font Complete.ttf" \
+                https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Hack/Regular/complete/Hack%20Regular%20Nerd%20Font%20Complete.ttf; then
+                
+                mv "Hack Regular Nerd Font Complete.ttf" ~/.local/share/fonts/
+                # Update font cache
+                fc-cache -fv > /dev/null
+                FONT_INSTALLED=true
+            else
+                print_warning "Failed to download Hack Nerd Font. Trying bundled fonts..."
+                if install_bundled_fonts; then
+                    FONT_INSTALLED=true
+                fi
+            fi
         fi
     fi
     
     if [[ "$FONT_INSTALLED" == true ]]; then
-        print_success "Nerd Font is already installed"
+        print_success "Nerd Font is installed"
     else
-        print_success "Nerd Font installed successfully"
+        print_warning "Unable to install Nerd Font. Please install one manually."
+        print_warning "Visit: https://www.nerdfonts.com/font-downloads"
     fi
 }
 
@@ -190,9 +321,8 @@ clone_repository() {
 configure_shell() {
     SHELL_CONFIGURED=false
     
-    # Detect current shell
-    CURRENT_SHELL=$(basename "$SHELL")
-    print_message "Detected shell: $CURRENT_SHELL"
+    # Get reference to current shell
+    CURRENT_SHELL=${CURRENT_SHELL:-$(basename "$SHELL")}
     
     # Configure based on shell type
     case "$CURRENT_SHELL" in
@@ -203,6 +333,12 @@ configure_shell() {
         bash)
             if [[ "$OS" == "macOS" ]]; then
                 CONFIG_FILE="$HOME/.bash_profile"
+            elif [[ "$OS" == "Windows" && "$IS_GIT_BASH" == true ]]; then
+                CONFIG_FILE="$HOME/.bashrc"
+                # Create .bashrc if it doesn't exist
+                if [ ! -f "$CONFIG_FILE" ]; then
+                    touch "$CONFIG_FILE"
+                fi
             else
                 CONFIG_FILE="$HOME/.bashrc"
             fi
@@ -246,13 +382,14 @@ apply_theme() {
 main() {
     print_message "Starting Oh My Posh Theme Installer"
     
-    # Detect OS
+    # Detect OS and shell
     detect_os
+    detect_shell
     
     # Install dependencies based on OS
     if [[ "$OS" == "macOS" ]]; then
         install_homebrew
-    else
+    elif [[ "$OS" == "Linux" ]] || [[ "$IS_WSL" == true ]]; then
         install_linux_packages
     fi
     
@@ -272,6 +409,16 @@ main() {
     print_success "Installation complete!"
     print_message "If you don't see the theme applied correctly, please restart your terminal."
     print_message "You may also need to configure your terminal to use the Hack Nerd Font."
+    
+    # Additional instructions for Git Bash
+    if [[ "$OS" == "Windows" && "$IS_GIT_BASH" == true ]]; then
+        echo ""
+        print_message "Git Bash-specific instructions:"
+        print_message "1. Make sure your Git Bash terminal is configured to use a Nerd Font"
+        print_message "2. You may need to edit the .bashrc file in your home directory"
+        print_message "3. If you experience issues, try running the PowerShell installer (install.ps1) as administrator"
+    fi
+    
     echo ""
 }
 

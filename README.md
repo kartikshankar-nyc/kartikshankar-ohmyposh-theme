@@ -6,13 +6,13 @@ A clean, informative prompt theme for Oh My Posh that works across multiple shel
 
 ## Features
 
-### Apple icon for macOS users
+### OS-specific icons (Windows, macOS, Linux)
 ![Apple Icon](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/apple_icon.png)
 
 ### Username display with a person icon
 ![Username](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/username.png)
 
-### Computer name with a computer icon
+### Dynamic computer name with a computer icon
 ![Computer Name](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/computer_name.png)
 
 ### Root user indicator
@@ -76,12 +76,28 @@ The easiest way to install this theme is using the provided installation scripts
    - Install Git if not present
    - Install Oh My Posh if not present
    - Install Hack Nerd Font
-   - Configure PowerShell and Command Prompt automatically
+   - Configure PowerShell, Command Prompt, and Git Bash automatically
    - Apply the theme to your current session
+
+## Bundled Nerd Fonts
+
+This repository includes the Hack Nerd Font family in the `fonts` directory to ensure you can install the theme even in environments with limited internet access or when facing issues with font downloads.
+
+The installation scripts will:
+1. First try to install Hack Nerd Font using standard methods (Homebrew, Oh My Posh's font installer)
+2. If those methods fail (e.g., network issues, proxy problems), the scripts will automatically fall back to installing the bundled fonts
+
+The bundled fonts include:
+- Hack Regular Nerd Font Complete
+- Hack Bold Nerd Font Complete 
+- Hack Italic Nerd Font Complete
+- Hack Bold Italic Nerd Font Complete
+
+For detailed font installation troubleshooting, see [Font Installation Guide](test_results/font_installation_guide.md).
 
 ## Complete Installation Guide
 
-If you prefer to install manually or encounter issues with the one-click installers, follow the detailed guide below.
+If you prefer to install manually or encounter issues with the one-click installers, follow the detailed guide below for your specific environment.
 
 ### macOS Installation
 
@@ -129,6 +145,16 @@ Nerd Fonts are essential for displaying the icons in the theme.
    ```bash
    brew tap homebrew/cask-fonts
    brew install --cask font-hack-nerd-font
+   ```
+
+   If you encounter issues with the Homebrew installation, you can manually install the bundled Nerd Fonts:
+   ```bash
+   # Navigate to the fonts directory in the repository
+   cd path/to/repository/fonts
+   
+   # Copy the fonts to your user fonts directory
+   mkdir -p ~/Library/Fonts
+   cp *.ttf ~/Library/Fonts/
    ```
 
 2. **Configure Terminal to use the Nerd Font**:
@@ -225,6 +251,62 @@ Choose the instructions for your shell:
    source ~/.bash_profile
    ```
 
+**For Git Bash on macOS**:
+
+1. **Edit your `~/.bashrc` file** (create if it doesn't exist):
+   ```bash
+   touch ~/.bashrc  # Create if it doesn't exist
+   nano ~/.bashrc
+   ```
+
+2. **Add the following line** at the end of the file (replace the path with the correct one):
+   ```bash
+   eval "$(oh-my-posh init bash --config ~/path/to/kartikshankar.omp.json)"
+   ```
+
+3. **Save and exit** by pressing `Ctrl+O`, then `Enter`, then `Ctrl+X`.
+
+4. **Apply the changes**:
+   ```bash
+   source ~/.bashrc
+   ```
+
+**For PowerShell on macOS**:
+
+1. First, ensure PowerShell is installed:
+   ```bash
+   brew install --cask powershell
+   ```
+
+2. **Open PowerShell**:
+   ```bash
+   pwsh
+   ```
+
+3. **Create a PowerShell profile if it doesn't exist**:
+   ```powershell
+   if (!(Test-Path -Path $PROFILE)) {
+     New-Item -ItemType File -Path $PROFILE -Force
+   }
+   ```
+
+4. **Edit your PowerShell profile**:
+   ```powershell
+   nano $PROFILE
+   ```
+
+5. **Add the following line** to the profile (replace the path with your actual theme path):
+   ```powershell
+   oh-my-posh init pwsh --config '~/path/to/kartikshankar.omp.json' | Invoke-Expression
+   ```
+
+6. **Save and exit** by pressing `Ctrl+O`, then `Enter`, then `Ctrl+X`.
+
+7. **Apply the changes**:
+   ```powershell
+   . $PROFILE
+   ```
+
 #### Verifying the Installation
 
 1. **Open a new terminal window** or tab to see your new theme in action.
@@ -287,6 +369,16 @@ Choose the instructions for your shell:
    ```
    
    This will open a menu. Choose "Hack" (recommended) or any other Nerd Font you prefer by typing its number and pressing Enter.
+
+   If you encounter network issues or the above command fails, you can use the bundled fonts:
+   ```powershell
+   # Navigate to the fonts directory in the repository
+   cd path\to\repository\fonts
+   
+   # Install the fonts by right-clicking and selecting "Install"
+   # Or you can use the following to open the folder and install them manually
+   explorer.exe .
+   ```
 
 2. **Configure Windows Terminal to use the Nerd Font**:
    - Open Windows Terminal
@@ -393,21 +485,44 @@ Choose the instructions for your shell:
 
 3. **Restart Command Prompt** to see the changes.
 
+**For Git Bash on Windows**:
+
+1. **Edit your Git Bash profile**:
+   ```bash
+   notepad ~/.bashrc
+   ```
+   
+   If the file doesn't exist, it will be created.
+
+2. **Add the following line** to the profile (replace the path with your actual theme path, and use forward slashes):
+   ```bash
+   eval "$(oh-my-posh init bash --config '/c/Users/YourUsername/Documents/oh-my-posh-themes/kartikshankar-ohmyposh-theme/kartikshankar.omp.json')"
+   ```
+
+3. **Save and close** the file.
+
+4. **Apply the changes** by restarting Git Bash or running:
+   ```bash
+   source ~/.bashrc
+   ```
+
 #### Verifying the Installation
 
-1. **Start a new instance** of your shell (PowerShell or Command Prompt).
+1. **Start a new instance** of your shell (PowerShell, Command Prompt, or Git Bash).
 
 2. **Check if the theme is displayed correctly**.
 
 3. If you see boxes or missing icons:
    - Make sure the Nerd Font is correctly set in your terminal
    - Try a different Nerd Font: `oh-my-posh font install` and choose another font
+   - Use the bundled Nerd Fonts in the repository's `fonts` directory
 
 #### Troubleshooting Windows Installation
 
 1. **Icons not displaying correctly**:
    - Verify you're using a Nerd Font
    - Try running: `oh-my-posh font install` and choose a different font
+   - Use the bundled Nerd Fonts in the repository's `fonts` directory
 
 2. **Error when running the init command**:
    - Make sure the path to the theme file is correct
@@ -420,6 +535,10 @@ Choose the instructions for your shell:
    - Ensure you're using the correct path format:
      - PowerShell: `C:\Users\Username\path\to\theme.json` or `$env:USERPROFILE\path\to\theme.json`
      - Command Prompt (in Lua script): `C:/Users/Username/path/to/theme.json` (note the forward slashes)
+     - Git Bash: `/c/Users/Username/path/to/theme.json` (Git Bash style paths)
+
+4. **Font download issues**:
+   - If you encounter the "failed to get nerd fonts release" error or other download issues, use the bundled fonts provided in the repository's `fonts` directory
 
 ## Customization
 
@@ -473,6 +592,17 @@ If you're using VS Code's integrated terminal, follow these additional steps:
 1. Verify you've installed a Nerd Font (`brew list | grep font` on macOS or `oh-my-posh font list` on Windows)
 2. Make sure your terminal is configured to use the Nerd Font
 3. Try a different Nerd Font if issues persist
+4. Use the bundled Nerd Fonts in the repository's `fonts` directory
+
+### Font Download Issues
+
+**Symptom**: "Failed to get nerd fonts release" error when trying to download fonts
+
+**Solution**:
+1. You might have network connectivity issues or proxy restrictions
+2. Use the bundled fonts in the repository's `fonts` directory
+3. For Windows, navigate to the `fonts` folder and manually install the fonts
+4. For macOS/Linux, copy the font files to your user's font directory
 
 ### Path Issues
 
@@ -491,6 +621,19 @@ If you're using VS Code's integrated terminal, follow these additional steps:
 1. Run `oh-my-posh debug` to identify potential issues
 2. Consider simplifying the theme by removing segments you don't need
 
+## Test Results
+
+This theme has been thoroughly tested to ensure it works correctly across different platforms and terminals. Test results and additional documentation can be found in the `test_results` directory:
+
+- [Latest Test Summary](test_results/latest_test_summary.md) - Overall test results and recent improvements
+- [Font Installation Guide](test_results/font_installation_guide.md) - Detailed guide for troubleshooting font issues
+- [Test Run Output](test_results/test_run_output.txt) - Raw output from the latest test run
+
+To run the tests yourself:
+```bash
+./run-all-tests.sh
+```
+
 ## Getting Help
 
 If you encounter issues with this theme:
@@ -498,6 +641,7 @@ If you encounter issues with this theme:
 1. Check the official [Oh My Posh documentation](https://ohmyposh.dev/docs/)
 2. Visit the [Oh My Posh GitHub repository](https://github.com/JanDeDobbeleer/oh-my-posh)
 3. Join the [Oh My Posh Discord community](https://discord.gg/5JqnmUZBdw)
+4. Check our [Font Installation Guide](test_results/font_installation_guide.md) for font-specific issues
 
 ## License
 
