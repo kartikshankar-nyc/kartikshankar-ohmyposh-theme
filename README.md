@@ -1,6 +1,6 @@
 # Kartik's Oh My Posh Theme
 
-A clean, informative prompt theme for Oh My Posh that works across multiple shells with a beautiful color palette.
+My favourite modern prompt theme - works across multiple shells with a beautiful color palette.
 
 ![Theme Preview](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/preview.png)
 
