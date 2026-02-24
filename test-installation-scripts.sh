@@ -212,11 +212,21 @@ print_header "Syntax Check for PowerShell Script"
 
 if command -v pwsh &> /dev/null; then
     print_info "Checking PowerShell script syntax..."
-    if pwsh -c "Test-ScriptFileInfo -Path '$POWERSHELL_SCRIPT' -ErrorAction SilentlyContinue" &> /dev/null || \
-       pwsh -c "Get-Content '$POWERSHELL_SCRIPT' | Out-Null" &> /dev/null; then
-        print_success "PowerShell script syntax appears valid"
+    # Use the PowerShell parser for actual syntax validation
+    PS_ERRORS=$(pwsh -NoProfile -c "
+        \$errors = \$null
+        [System.Management.Automation.Language.Parser]::ParseFile('$POWERSHELL_SCRIPT', [ref]\$null, [ref]\$errors) | Out-Null
+        if (\$errors.Count -gt 0) {
+            \$errors | ForEach-Object { Write-Output \$_.Message }
+            exit 1
+        }
+        exit 0
+    " 2>&1)
+    if [ $? -eq 0 ]; then
+        print_success "PowerShell script syntax is valid"
     else
-        print_error "PowerShell script may contain syntax errors"
+        print_error "PowerShell script contains syntax errors:"
+        echo "  $PS_ERRORS"
     fi
 else
     print_warning "PowerShell (pwsh) is not installed, skipping syntax check for PowerShell script"

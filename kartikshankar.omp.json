@@ -8,8 +8,13 @@
                     "background": "#264653",
                     "foreground": "#FFFFFF",
                     "leading_diamond": "\ue0b6",
+                    "properties": {
+                        "windows": "\ue70f",
+                        "darwin": "\uf179",
+                        "linux": "\uf17c"
+                    },
                     "style": "diamond",
-                    "template": " {{ if eq .Os \"windows\" }}\ue70f{{ else if eq .Os \"darwin\" }}\uf179{{ else if eq .Os \"linux\" }}\uf17c{{ else }}\uf17a{{ end }} ",
+                    "template": " {{ .Icon }} ",
                     "trailing_diamond": "\ue0b0",
                     "type": "os"
                 },

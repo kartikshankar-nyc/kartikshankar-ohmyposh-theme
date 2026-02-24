@@ -212,10 +212,10 @@ function Install-Homebrew {
     
     Write-ColorMessage "Installing Homebrew..."
     try {
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        
+        & /bin/bash -c 'curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash'
+
         # Add Homebrew to PATH for the current session
-        if ((uname -m) -eq "arm64") {
+        if ((& uname -m) -eq "arm64") {
             $homebrewPath = "/opt/homebrew/bin"
         }
         else {
@@ -223,7 +223,7 @@ function Install-Homebrew {
         }
         
         # Update path for current session
-        $env:PATH = "$homebrewPath:$env:PATH"
+        $env:PATH = "${homebrewPath}:${env:PATH}"
         
         Write-ColorMessage "Homebrew installed successfully" "SUCCESS"
     }
@@ -300,8 +300,8 @@ function Install-OhMyPosh {
 function Install-BundledNerdFonts {
     Write-ColorMessage "Using bundled Nerd Fonts as fallback..." "INFO"
     
-    # Get the script's directory
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    # Get the script's directory ($PSScriptRoot is reliable inside functions; $MyInvocation.MyCommand.Path is not)
+    $scriptDir = $PSScriptRoot
     $fontsDir = Join-Path -Path $scriptDir -ChildPath "fonts"
     
     if (-not (Test-Path -Path $fontsDir -PathType Container)) {
@@ -310,7 +310,7 @@ function Install-BundledNerdFonts {
     }
     
     # Check if there are font files in the directory
-    $fontFiles = Get-ChildItem -Path $fontsDir -Filter "*.ttf" -ErrorAction SilentlyContinue
+    $fontFiles = @(Get-ChildItem -Path $fontsDir -Filter "*.ttf" -ErrorAction SilentlyContinue)
     if ($fontFiles.Count -eq 0) {
         Write-ColorMessage "No bundled font files found in: $fontsDir" "ERROR"
         return $false
@@ -360,7 +360,7 @@ function Install-BundledNerdFonts {
                 Write-ColorMessage "Installed font: $fontName" "SUCCESS"
             }
             catch {
-                Write-ColorMessage "Failed to install font $fontName`: $_" "ERROR"
+                Write-ColorMessage "Failed to install font ${fontName}: $_" "ERROR"
             }
         }
     }
@@ -382,7 +382,7 @@ function Install-BundledNerdFonts {
                 Write-ColorMessage "Installed font: $fontName" "SUCCESS"
             }
             catch {
-                Write-ColorMessage "Failed to install font $fontName`: $_" "ERROR"
+                Write-ColorMessage "Failed to install font ${fontName}: $_" "ERROR"
             }
         }
     }
@@ -398,7 +398,14 @@ function Install-NerdFont {
     
     # Use Oh My Posh to install Hack Nerd Font
     if ($script:OS -eq "Windows") {
-        if (-not (Test-Path -Path "$env:LOCALAPPDATA\oh-my-posh\fonts\Hack.zip" -PathType Leaf)) {
+        # Check for installed Hack Nerd Font in user fonts or system fonts
+        $userFontsPath = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+        $systemFontsPath = Join-Path $env:windir "Fonts"
+        $hackInstalled = (Test-Path (Join-Path $userFontsPath "HackNerdFont-Regular.ttf")) -or
+                         (Test-Path (Join-Path $systemFontsPath "HackNerdFont-Regular.ttf")) -or
+                         (Test-Path (Join-Path $userFontsPath "Hack*Nerd*")) -or
+                         (Test-Path (Join-Path $systemFontsPath "Hack*Nerd*"))
+        if (-not $hackInstalled) {
             Write-ColorMessage "Installing Hack Nerd Font..."
             try {
                 oh-my-posh font install Hack
@@ -431,7 +438,6 @@ function Install-NerdFont {
             Write-ColorMessage "Installing Hack Nerd Font..."
             if (Test-CommandExists brew) {
                 try {
-                    brew tap homebrew/cask-fonts
                     brew install --cask font-hack-nerd-font
                     $fontInstalled = $true
                 }
@@ -494,13 +500,14 @@ function Clone-Repository {
     
     if (-not (Test-Path -Path $repoDir)) {
         Write-ColorMessage "Cloning theme repository..."
-        git clone https://github.com/kartikshankar/kartikshankar-ohmyposh-theme.git $repoDir
+        git clone https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme.git $repoDir
         Write-ColorMessage "Theme repository cloned successfully" "SUCCESS"
     }
     else {
         Write-ColorMessage "Updating existing theme repository..."
-        Set-Location $repoDir
+        Push-Location $repoDir
         git pull
+        Pop-Location
         Write-ColorMessage "Theme repository updated successfully" "SUCCESS"
     }
     
@@ -553,23 +560,35 @@ function Configure-Cmd {
     }
     
     Write-ColorMessage "Configuring Command Prompt..."
-    
+
+    # CMD requires Clink (https://chrisant996.github.io/clink/) to run Oh My Posh .lua scripts
+    $clinkInstalled = (Test-CommandExists clink) -or
+                      (Test-Path (Join-Path $env:LOCALAPPDATA "clink")) -or
+                      (Test-Path "C:\Program Files (x86)\clink")
+
+    if (-not $clinkInstalled) {
+        Write-ColorMessage "Clink is required for Oh My Posh in Command Prompt but was not found." "WARNING"
+        Write-ColorMessage "Install Clink from https://chrisant996.github.io/clink/ then re-run this script." "WARNING"
+        Write-ColorMessage "Skipping Command Prompt configuration." "WARNING"
+        return
+    }
+
     # Create Lua script for CMD
     $luaScript = @"
 load(io.popen('oh-my-posh init cmd --config "$($script:themePath.Replace('\', '/'))"'):read("*a"))()
 "@
-    
+
     $luaPath = Join-Path $env:USERPROFILE "oh-my-posh.lua"
     Set-Content -Path $luaPath -Value $luaScript
-    
+
     # Set registry key for CMD
     $regPath = "HKCU:\Software\Microsoft\Command Processor"
     $regName = "AutoRun"
     $regValue = "%USERPROFILE%\oh-my-posh.lua"
-    
+
     # Check if the key already exists
     $existingValue = Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue
-    
+
     if ($existingValue -and $existingValue.AutoRun -eq $regValue) {
         Write-ColorMessage "Command Prompt already configured to use the theme" "SUCCESS"
     }
@@ -596,12 +615,13 @@ function Configure-GitBash {
     }
     
     # Prepare the config line - use forward slashes for Git Bash
+    # Use single quotes to prevent PowerShell from interpreting $(...) as a subexpression
     $themePath = $script:themePath.Replace('\', '/')
-    $configLine = "eval `"$(oh-my-posh init bash --config '$themePath')`""
-    
+    $configLine = 'eval "$(oh-my-posh init bash --config ''' + $themePath + ''')"'
+
     # Check if the configuration is already in the file
     $profileContent = Get-Content -Path $gitBashProfile -Raw -ErrorAction SilentlyContinue
-    
+
     if ($profileContent -like "*$themePath*") {
         Write-ColorMessage "Git Bash profile already configured to use the theme" "SUCCESS"
     }
@@ -609,7 +629,9 @@ function Configure-GitBash {
         # Check if profile already has Oh My Posh configuration
         if ($profileContent -like "*oh-my-posh init*") {
             Write-ColorMessage "Updating existing Oh My Posh configuration in Git Bash profile..."
-            $profileContent = ($profileContent -split "`n") | ForEach-Object {
+            # Split on CRLF or LF to handle both line ending styles
+            $lines = $profileContent -split '\r?\n'
+            $lines = $lines | ForEach-Object {
                 if ($_ -match "oh-my-posh init") {
                     $configLine
                 }
@@ -617,15 +639,17 @@ function Configure-GitBash {
                     $_
                 }
             }
-            $profileContent = $profileContent -join "`n"
-            Set-Content -Path $gitBashProfile -Value $profileContent
+            # Write with LF line endings for Git Bash compatibility
+            $newContent = ($lines -join "`n") + "`n"
+            [System.IO.File]::WriteAllText($gitBashProfile, $newContent)
         }
         else {
             Write-ColorMessage "Adding Oh My Posh configuration to Git Bash profile..."
-            Add-Content -Path $gitBashProfile -Value "`n# Oh My Posh configuration"
-            Add-Content -Path $gitBashProfile -Value $configLine
+            # Append with LF line endings for Git Bash compatibility
+            $appendText = "`n# Oh My Posh configuration`n$configLine`n"
+            [System.IO.File]::AppendAllText($gitBashProfile, $appendText)
         }
-        
+
         Write-ColorMessage "Git Bash profile configured successfully" "SUCCESS"
     }
 }

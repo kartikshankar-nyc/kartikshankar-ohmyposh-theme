@@ -46,7 +46,7 @@ print_success "Oh My Posh is installed ($(oh-my-posh --version))"
 # Check for a Nerd Font
 print_info "Checking for Nerd Font..."
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    if brew list | grep -q "font-.*-nerd-font"; then
+    if brew list --cask | grep -q "font-.*-nerd-font"; then
         print_success "Nerd Font is installed via Homebrew"
     else
         print_warning "No Nerd Font detected via Homebrew. Make sure you have one installed and configured in your terminal"
@@ -145,19 +145,18 @@ echo "This might take a few seconds..."
     export POSH_THEME="$THEME_PATH"
     # Create a test git repo
     TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
     cd "$TMP_DIR"
     git init &> /dev/null
     touch test.txt
-    
+
     # Test git status segment
     git add . &> /dev/null
     echo "Git repo with staged changes:"
     oh-my-posh print primary --config "$THEME_PATH"
     echo ""
-    
-    # Clean up
+
     cd - &> /dev/null
-    rm -rf "$TMP_DIR"
 )
 
 # Print usage instructions
@@ -213,17 +212,33 @@ echo ""
 # Performance check
 print_header "Performance Check"
 print_info "Testing theme rendering performance..."
-START_TIME=$(date +%s.%N)
-oh-my-posh print primary --config "$THEME_PATH" > /dev/null
-END_TIME=$(date +%s.%N)
-RENDERING_TIME=$(echo "$END_TIME - $START_TIME" | bc)
-echo "Rendering time: ${RENDERING_TIME}s"
+# Use python3 for sub-second precision (portable across macOS and Linux)
+if command -v python3 &> /dev/null; then
+    START_TIME=$(python3 -c "import time; print(time.time())")
+    oh-my-posh print primary --config "$THEME_PATH" > /dev/null
+    END_TIME=$(python3 -c "import time; print(time.time())")
+    RENDERING_TIME=$(python3 -c "print(f'{$END_TIME - $START_TIME:.3f}')")
+    echo "Rendering time: ${RENDERING_TIME}s"
 
-if (( $(echo "$RENDERING_TIME > 0.5" | bc -l) )); then
-    print_warning "Theme rendering is a bit slow (${RENDERING_TIME}s > 0.5s)"
-    echo "   Consider simplifying complex segments for better performance"
+    if python3 -c "exit(0 if $RENDERING_TIME > 0.5 else 1)"; then
+        print_warning "Theme rendering is a bit slow (${RENDERING_TIME}s > 0.5s)"
+        echo "   Consider simplifying complex segments for better performance"
+    else
+        print_success "Theme rendering is fast (${RENDERING_TIME}s)"
+    fi
 else
-    print_success "Theme rendering is fast (${RENDERING_TIME}s)"
+    # Fallback: use bash SECONDS (integer-only, less precise)
+    SECONDS=0
+    oh-my-posh print primary --config "$THEME_PATH" > /dev/null
+    RENDERING_TIME=$SECONDS
+    echo "Rendering time: ~${RENDERING_TIME}s"
+
+    if [[ $RENDERING_TIME -gt 0 ]]; then
+        print_warning "Theme rendering is a bit slow (~${RENDERING_TIME}s > 0.5s)"
+        echo "   Consider simplifying complex segments for better performance"
+    else
+        print_success "Theme rendering is fast (<1s)"
+    fi
 fi
 
 print_header "Test Complete"

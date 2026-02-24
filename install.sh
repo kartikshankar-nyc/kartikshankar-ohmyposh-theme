@@ -112,7 +112,7 @@ install_linux_packages() {
 install_oh_my_posh() {
     if ! command_exists oh-my-posh; then
         print_message "Installing Oh My Posh..."
-        
+
         if [[ "$OS" == "macOS" ]]; then
             brew install oh-my-posh
         elif [[ "$OS" == "Windows" && "$IS_GIT_BASH" == true ]]; then
@@ -131,8 +131,14 @@ install_oh_my_posh() {
         else
             curl -s https://ohmyposh.dev/install.sh | bash -s
         fi
-        
-        print_success "Oh My Posh installed successfully"
+
+        if command_exists oh-my-posh; then
+            print_success "Oh My Posh installed successfully"
+        else
+            print_error "Oh My Posh installation could not be verified. Please install it manually."
+            print_error "Visit: https://ohmyposh.dev/docs/installation/linux"
+            exit 1
+        fi
     else
         print_success "Oh My Posh is already installed"
     fi
@@ -193,11 +199,10 @@ install_nerd_font() {
     FONT_INSTALLED=false
     
     if [[ "$OS" == "macOS" ]]; then
-        if brew list | grep -q "font-hack-nerd-font"; then
+        if brew list --cask | grep -q "font-hack-nerd-font"; then
             FONT_INSTALLED=true
         else
             print_message "Installing Hack Nerd Font..."
-            brew tap homebrew/cask-fonts
             if brew install --cask font-hack-nerd-font; then
                 FONT_INSTALLED=true
             else
@@ -246,19 +251,12 @@ install_nerd_font() {
             FONT_INSTALLED=true
         else
             print_message "Installing Hack Nerd Font..."
-            # Create fonts directory if it doesn't exist
-            mkdir -p ~/.local/share/fonts
-            
-            # Try to download Hack Nerd Font
-            if curl -fLo "Hack Regular Nerd Font Complete.ttf" \
-                https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Hack/Regular/complete/Hack%20Regular%20Nerd%20Font%20Complete.ttf; then
-                
-                mv "Hack Regular Nerd Font Complete.ttf" ~/.local/share/fonts/
-                # Update font cache
-                fc-cache -fv > /dev/null
+
+            # Try oh-my-posh font installer first (official method)
+            if command_exists oh-my-posh && oh-my-posh font install Hack; then
                 FONT_INSTALLED=true
             else
-                print_warning "Failed to download Hack Nerd Font. Trying bundled fonts..."
+                print_warning "Failed to install Hack Nerd Font via Oh My Posh. Trying bundled fonts..."
                 if install_bundled_fonts; then
                     FONT_INSTALLED=true
                 fi
@@ -305,11 +303,11 @@ clone_repository() {
     
     if [ ! -d "$REPO_DIR" ]; then
         print_message "Cloning theme repository..."
-        git clone https://github.com/kartikshankar/kartikshankar-ohmyposh-theme.git "$REPO_DIR"
+        git clone https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme.git "$REPO_DIR"
         print_success "Theme repository cloned successfully"
     else
         print_message "Updating existing theme repository..."
-        cd "$REPO_DIR" && git pull
+        git -C "$REPO_DIR" pull
         print_success "Theme repository updated successfully"
     fi
     
@@ -360,7 +358,11 @@ configure_shell() {
         # Check if Oh My Posh is configured with another theme
         if grep -q "oh-my-posh init" "$CONFIG_FILE" 2>/dev/null; then
             print_message "Updating existing Oh My Posh configuration..."
-            sed -i.bak "s|oh-my-posh init.*|$CONFIG_LINE|g" "$CONFIG_FILE"
+            if [[ "$OS" == "macOS" ]]; then
+                sed -i '' "s|oh-my-posh init.*|$CONFIG_LINE|g" "$CONFIG_FILE"
+            else
+                sed -i "s|oh-my-posh init.*|$CONFIG_LINE|g" "$CONFIG_FILE"
+            fi
         else
             print_message "Adding Oh My Posh configuration to $CONFIG_FILE..."
             echo "" >> "$CONFIG_FILE"

@@ -43,6 +43,7 @@ TEST_SCRIPTS=(
     "test-theme.sh"
     "test-dynamic-segments.sh"
     "test-installation-scripts.sh"
+    "test-comprehensive-validation.sh"
 )
 
 # Track overall success

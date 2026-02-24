@@ -84,14 +84,19 @@ if [[ -z "$OS_SEGMENT" ]]; then
 fi
 print_success "OS segment found in theme"
 
-# Check if the OS segment contains conditional logic for different OS types
+# Check if the OS segment uses the .Icon template property (oh-my-posh v25+ API)
 print_info "Verifying dynamic OS icon logic..."
-if [[ "$OS_SEGMENT" == *"if eq .Os \"windows\""* ]] && \
-   [[ "$OS_SEGMENT" == *"if eq .Os \"darwin\""* ]] && \
-   [[ "$OS_SEGMENT" == *"if eq .Os \"linux\""* ]]; then
-    print_success "Theme includes dynamic OS icon logic"
+if [[ "$OS_SEGMENT" == *"{{ .Icon }}"* ]]; then
+    print_success "Theme uses .Icon template for dynamic OS icons"
+    # Also verify OS-specific icon properties are set
+    OS_PROPS=$(cat "$THEME_PATH" | jq -r '.blocks[0].segments[] | select(.type == "os") | .properties')
+    if [[ "$OS_PROPS" == *"darwin"* ]] && [[ "$OS_PROPS" == *"windows"* ]] && [[ "$OS_PROPS" == *"linux"* ]]; then
+        print_success "Theme includes OS-specific icon properties"
+    else
+        print_warning "Theme may be missing OS-specific icon properties"
+    fi
 else
-    print_error "Theme does not include proper dynamic OS icon logic"
+    print_error "Theme does not use .Icon template for OS segment"
     echo "Current template: $OS_SEGMENT"
     exit 1
 fi
@@ -134,9 +139,7 @@ echo ""
 # Final validation
 print_header "Test Results"
 
-if [[ "$OS_SEGMENT" == *"if eq .Os \"windows\""* ]] && \
-   [[ "$OS_SEGMENT" == *"if eq .Os \"darwin\""* ]] && \
-   [[ "$OS_SEGMENT" == *"if eq .Os \"linux\""* ]] && \
+if [[ "$OS_SEGMENT" == *"{{ .Icon }}"* ]] && \
    [[ "$HOSTNAME_SEGMENT" == *"{{ .HostName }}"* ]]; then
     print_success "Dynamic segments test passed! The theme adapts to different operating systems and hostnames."
 else
