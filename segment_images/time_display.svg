@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120" viewBox="0 0 320 120">
+  <defs>
+    <style>text { font-family: 'Menlo', 'Consolas', 'Courier New', monospace; }</style>
+  </defs>
+  <rect x="5" y="5" width="310" height="110" rx="8" ry="8" fill="#1a1b26"/>
+  <rect x="5" y="5" width="310" height="110" rx="8" ry="8" fill="none" stroke="#444" stroke-width="0.5"/>
+  <rect x="5" y="5" width="310" height="28" rx="8" ry="8" fill="#24253a"/>
+  <rect x="5" y="25" width="310" height="8" fill="#24253a"/>
+  <circle cx="22" cy="19" r="5" fill="#ff5f57"/>
+  <circle cx="39" cy="19" r="5" fill="#febc2e"/>
+  <circle cx="56" cy="19" r="5" fill="#28c840"/>
+
+  <!-- Time segment (right-aligned, diamond style) - Slate Blue #536878 -->
+  <polygon points="186,58 174,72 186,86" fill="#536878"/>
+  <rect x="186" y="58" width="100" height="28" fill="#536878"/>
+  <path d="M286,58 Q292,72 286,86 Z" fill="#536878"/>
+  <text x="196" y="77" fill="#FFFFFF" font-size="14">14:32:08</text>
+  <rect x="154" y="62" width="8" height="16" fill="#c0c0c0" opacity="0.6"/>
+</svg>

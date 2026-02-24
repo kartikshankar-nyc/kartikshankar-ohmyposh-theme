@@ -2,20 +2,20 @@
 
 A modern, cross-platform terminal prompt theme with dynamic OS icons, git status indicators, and a warm color palette. Works with Zsh, Bash, PowerShell, Command Prompt, and Git Bash.
 
-![Theme Preview](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/preview.png)
+![Theme Preview](segment_images/preview.svg)
 
 ## Features
 
 | Segment | Description | Preview |
 |---------|-------------|---------|
-| OS Icon | Auto-detects Windows, macOS, or Linux | ![Apple Icon](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/apple_icon.png) |
-| Username | Current user with person icon | ![Username](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/username.png) |
-| Hostname | Dynamic computer name | ![Computer Name](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/computer_name.png) |
-| Root Indicator | Visible when running as root/admin | ![Root Indicator](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/root_indicator.png) |
-| Directory | Current path with folder icon | ![Directory Path](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/directory_path.png) |
-| Git Status | Branch, staged/unstaged changes with color-coded background | ![Git Status](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/git_status.png) |
-| Time | Right-aligned clock | ![Time Display](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/time_display.png) |
-| Prompt | Clean red `>` on a new line | ![Prompt Character](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/segment_images/prompt_character.png) |
+| OS Icon | Auto-detects Windows, macOS, or Linux | ![Apple Icon](segment_images/apple_icon.svg) |
+| Username | Current user with person icon | ![Username](segment_images/username.svg) |
+| Hostname | Dynamic computer name | ![Computer Name](segment_images/computer_name.svg) |
+| Root Indicator | Visible when running as root/admin | ![Root Indicator](segment_images/root_indicator.svg) |
+| Directory | Current path with folder icon | ![Directory Path](segment_images/directory_path.svg) |
+| Git Status | Branch, staged/unstaged changes with color-coded background | ![Git Status](segment_images/git_status.svg) |
+| Time | Right-aligned clock | ![Time Display](segment_images/time_display.svg) |
+| Prompt | Clean red `>` on a new line | ![Prompt Character](segment_images/prompt_character.svg) |
 
 ### Git Status Color Coding
 

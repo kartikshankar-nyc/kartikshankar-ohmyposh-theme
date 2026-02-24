@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120" viewBox="0 0 320 120">
+  <defs>
+    <style>text { font-family: 'Menlo', 'Consolas', 'Courier New', monospace; }</style>
+  </defs>
+  <rect x="5" y="5" width="310" height="110" rx="8" ry="8" fill="#1a1b26"/>
+  <rect x="5" y="5" width="310" height="110" rx="8" ry="8" fill="none" stroke="#444" stroke-width="0.5"/>
+  <rect x="5" y="5" width="310" height="28" rx="8" ry="8" fill="#24253a"/>
+  <rect x="5" y="25" width="310" height="8" fill="#24253a"/>
+  <circle cx="22" cy="19" r="5" fill="#ff5f57"/>
+  <circle cx="39" cy="19" r="5" fill="#febc2e"/>
+  <circle cx="56" cy="19" r="5" fill="#28c840"/>
+
+  <!-- Directory segment - Saffron #e9c46a -->
+  <path d="M22,58 Q28,52 34,58 L34,86 Q28,92 22,86 Z" fill="#e9c46a"/>
+  <rect x="34" y="58" width="170" height="28" fill="#e9c46a"/>
+  <!-- Folder icon -->
+  <g transform="translate(40,64) scale(0.8)">
+    <path d="M0,3 L0,17 L20,17 L20,5 L9,5 L7,3 Z" fill="#000000"/>
+  </g>
+  <text x="60" y="77" fill="#000000" font-size="14">~/projects</text>
+  <polygon points="204,58 216,72 204,86" fill="#e9c46a"/>
+  <rect x="222" y="62" width="8" height="16" fill="#c0c0c0" opacity="0.6"/>
+</svg>

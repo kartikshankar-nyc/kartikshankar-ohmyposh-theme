@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="120" viewBox="0 0 280 120">
+  <defs>
+    <style>text { font-family: 'Menlo', 'Consolas', 'Courier New', monospace; }</style>
+  </defs>
+  <!-- Terminal window -->
+  <rect x="5" y="5" width="270" height="110" rx="8" ry="8" fill="#1a1b26"/>
+  <rect x="5" y="5" width="270" height="110" rx="8" ry="8" fill="none" stroke="#444" stroke-width="0.5"/>
+  <!-- Title bar -->
+  <rect x="5" y="5" width="270" height="28" rx="8" ry="8" fill="#24253a"/>
+  <rect x="5" y="25" width="270" height="8" fill="#24253a"/>
+  <circle cx="22" cy="19" r="5" fill="#ff5f57"/>
+  <circle cx="39" cy="19" r="5" fill="#febc2e"/>
+  <circle cx="56" cy="19" r="5" fill="#28c840"/>
+
+  <!-- OS Icon segment - Charcoal #264653 (diamond style) -->
+  <path d="M22,58 Q28,52 34,58 L34,86 Q28,92 22,86 Z" fill="#264653"/>
+  <rect x="34" y="58" width="36" height="28" fill="#264653"/>
+  <!-- Apple icon -->
+  <g transform="translate(40,64) scale(0.033)">
+    <path d="M394.5 318.4c-2.3 53.5 23.8 97.5 63.2 127.5-23.8 34.2-57 73.5-100.5 73.5-44 0-58-25.5-108-25.5-51 0-69 26-109.5 26-41 0-72-36-99.5-74C-3.8 390.4 12.5 260.4 72 200.4c29-29 64-46.5 102-46.5 43 0 68 26 102.5 26 33.5 0 54-26 102-26 34 0 65 13 89 38.5-78 42.5-73.5 125-73 126zM310 170.4c22-27 37-64.5 33-102-32 2-70 21.5-92.5 48-21 24-39 62-34 99 35 2.5 71-18 93.5-45z" fill="#FFFFFF"/>
+  </g>
+  <!-- Powerline arrow end -->
+  <polygon points="70,58 82,72 70,86" fill="#264653"/>
+  <!-- Cursor -->
+  <rect x="88" y="62" width="8" height="16" fill="#c0c0c0" opacity="0.6"/>
+</svg>
