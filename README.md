@@ -4,10 +4,6 @@ A modern, cross-platform terminal prompt theme with dynamic OS icons, git status
 
 ![Theme Preview](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/preview.png)
 
-### Theme in VS Code / Cursor IDE
-
-![IDE Preview](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/raw/main/ide-preview.png)
-
 ## Features
 
 | Segment | Description | Preview |
