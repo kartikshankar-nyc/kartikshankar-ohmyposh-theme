@@ -234,6 +234,10 @@ eval "$(oh-my-posh init zsh --config '/path/to/kartikshankar.omp.json')"
 # <<< kartikshankar oh-my-posh theme <<<
 ```
 
+If Oh My Posh was installed somewhere your login shell does not search — the official
+Linux installer defaults to `~/.local/bin` — the block also gets a `PATH` export ahead of
+the `eval`, so the line cannot fail with `command not found`.
+
 Re-running replaces exactly that block. Lines outside it are never rewritten, the file is
 backed up to `<file>.bak-<timestamp>` before the first edit, and a second run with no
 changes leaves the file byte-identical. To uninstall, delete the block.

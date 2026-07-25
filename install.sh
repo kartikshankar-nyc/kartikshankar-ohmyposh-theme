@@ -29,6 +29,10 @@ MARKER_END="# <<< kartikshankar oh-my-posh theme <<<"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# PATH as inherited, before this script modifies it. Used to decide whether the
+# user's shell will actually be able to find oh-my-posh.
+ORIGINAL_PATH="${PATH}"
+
 # Options
 OPT_SHELL=""
 OPT_NO_FONT=false
@@ -82,6 +86,16 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 
 # Quote a string for safe literal inclusion inside single quotes in a shell file.
 shell_quote() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+
+# path_contains_dir <path-list> <dir> -- true if <dir> is an entry in <path-list>.
+# Wrapping both sides in colons makes first, middle, and last entries match while
+# rejecting partial matches such as /usr/local/bin inside /usr/local/bin2.
+path_contains_dir() {
+    case ":$1:" in
+        *":$2:"*) return 0 ;;
+        *)        return 1 ;;
+    esac
+}
 
 # ------------------------------------------------------------ arg parsing ----
 
@@ -364,13 +378,23 @@ resolve_theme_path() {
 
 configure_shell() {
     local shell_name="$1"
-    local rc init_line block tmp
+    local rc init_line tmp backup path_line
 
     rc="$(rc_file_for "$shell_name")" || { warn "Don't know how to configure $shell_name"; return 1; }
     init_line="eval \"\$(oh-my-posh init $shell_name --config $(shell_quote "$THEME_PATH"))\""
 
+    # If oh-my-posh lives somewhere the user's shell does not search, the init
+    # line would fail with "command not found". Prepend its directory.
+    path_line=""
+    local omp_dir
+    omp_dir="$(dirname "$(command -v oh-my-posh 2>/dev/null || echo /nonexistent)")"
+    if [[ -d "$omp_dir" ]] && ! path_contains_dir "$ORIGINAL_PATH" "$omp_dir"; then
+        path_line="export PATH=$(shell_quote "$omp_dir"):\$PATH"
+    fi
+
     if [[ "$OPT_DRY_RUN" == true ]]; then
         info "[dry-run] would configure $rc with:"
+        [[ -n "$path_line" ]] && printf '    %s\n' "$path_line"
         printf '    %s\n' "$init_line"
         return 0
     fi
@@ -379,14 +403,17 @@ configure_shell() {
     [[ -f "$rc" ]] || : > "$rc"
 
     # Already correct? Then leave the file completely alone.
-    if grep -Fqx "$init_line" "$rc" 2>/dev/null && grep -Fqx "$MARKER_BEGIN" "$rc" 2>/dev/null; then
+    local path_ok=0
+    [[ -z "$path_line" ]] || grep -Fqx "$path_line" "$rc" 2>/dev/null || path_ok=1
+    if [[ $path_ok -eq 0 ]] && grep -Fqx "$init_line" "$rc" 2>/dev/null \
+       && grep -Fqx "$MARKER_BEGIN" "$rc" 2>/dev/null; then
         success "$rc is already configured"
         CONFIGURED_FILES+=("$rc")
         return 0
     fi
 
     # Back up before the first modification of this file.
-    local backup="${rc}.bak-$(date +%Y%m%d%H%M%S)"
+    backup="${rc}.bak-$(date +%Y%m%d%H%M%S)"
     cp "$rc" "$backup"
 
     # Strip any previous block of ours, then append a fresh one. Unrelated
@@ -400,6 +427,7 @@ configure_shell() {
 
     {
         printf '\n%s\n' "$MARKER_BEGIN"
+        [[ -n "$path_line" ]] && printf '%s\n' "$path_line"
         printf '%s\n' "$init_line"
         printf '%s\n' "$MARKER_END"
     } >> "$tmp"
@@ -450,6 +478,7 @@ main() {
     else
         printf '  Config: none written\n'
         printf '\n  Add this line to your shell config manually:\n'
+        # shellcheck disable=SC2016  # $(...) is printed literally for the user to copy.
         printf '    eval "$(oh-my-posh init <your-shell> --config %s)"\n' "$(shell_quote "$THEME_PATH")"
     fi
 

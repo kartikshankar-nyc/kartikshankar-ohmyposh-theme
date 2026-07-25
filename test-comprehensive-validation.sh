@@ -6,6 +6,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=test-lib.sh
 source "$SCRIPT_DIR/test-lib.sh"
 
 THEME="$SCRIPT_DIR/kartikshankar.omp.json"
@@ -163,20 +164,27 @@ done
 
 for s in "$SCRIPT_DIR"/*.sh; do
     name=$(basename "$s")
-    [[ -x "$s" ]] && pass "$name is executable" || fail "$name is executable" "missing +x"
+    if [[ -x "$s" ]]; then
+        pass "$name is executable"
+    else
+        fail "$name is executable" "missing +x"
+    fi
 done
 
+# Gate at warning severity, following sourced files (-x). Remaining `info` and
+# `style` notes are intentional: literal $-expressions inside single-quoted grep
+# patterns and assertion strings.
 if command -v shellcheck >/dev/null 2>&1; then
     for s in "$SCRIPT_DIR"/*.sh; do
         name=$(basename "$s")
-        if shellcheck -S error "$s" >/dev/null 2>&1; then
-            pass "$name passes shellcheck (error severity)"
+        if shellcheck -x -S warning "$s" >/dev/null 2>&1; then
+            pass "$name passes shellcheck (warning severity)"
         else
-            fail "$name passes shellcheck (error severity)" "$(shellcheck -S error "$s" 2>&1 | head -10)"
+            fail "$name passes shellcheck (warning severity)" "$(shellcheck -x -S warning "$s" 2>&1 | head -10)"
         fi
     done
 else
-    skip "shellcheck not installed; skipping lint"
+    skip "shellcheck not installed (brew install shellcheck); skipping lint"
 fi
 
 # ---------------------------------------------------------------------------

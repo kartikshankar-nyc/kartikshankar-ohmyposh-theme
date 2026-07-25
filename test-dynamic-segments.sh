@@ -10,6 +10,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=test-lib.sh
 source "$SCRIPT_DIR/test-lib.sh"
 
 THEME="$SCRIPT_DIR/kartikshankar.omp.json"

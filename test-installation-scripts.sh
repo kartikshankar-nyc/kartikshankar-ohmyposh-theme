@@ -10,6 +10,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=test-lib.sh
 source "$SCRIPT_DIR/test-lib.sh"
 
 INSTALL_SH="$SCRIPT_DIR/install.sh"
@@ -63,14 +64,53 @@ else
 fi
 
 if command -v shellcheck >/dev/null 2>&1; then
-    if shellcheck -S error "$INSTALL_SH" >/dev/null 2>&1; then
-        pass "install.sh passes shellcheck (error severity)"
+    if shellcheck -x -S warning "$INSTALL_SH" >/dev/null 2>&1; then
+        pass "install.sh passes shellcheck (warning severity)"
     else
-        fail "install.sh passes shellcheck (error severity)" "$(shellcheck -S error "$INSTALL_SH" 2>&1 | head -20)"
+        fail "install.sh passes shellcheck (warning severity)" \
+             "$(shellcheck -x -S warning "$INSTALL_SH" 2>&1 | head -20)"
     fi
 else
-    skip "shellcheck not installed"
+    skip "shellcheck not installed (brew install shellcheck)"
 fi
+
+# ---------------------------------------------------------------------------
+section "PATH membership helper"
+# ---------------------------------------------------------------------------
+
+# If oh-my-posh is installed somewhere the login shell does not search, the
+# generated init line fails with "command not found". install.sh adds a PATH
+# export in that case, gated on this helper. Test it directly: the branch that
+# uses it is only reachable after a real network install.
+# shellcheck disable=SC1090  # path is dynamic by design
+pc_test() {
+    bash -c '
+        path_contains_dir() {
+            case ":$1:" in
+                *":$2:"*) return 0 ;;
+                *)        return 1 ;;
+            esac
+        }
+        path_contains_dir "$1" "$2"
+    ' _ "$1" "$2"
+}
+
+# Confirm the definition under test matches the one shipped in install.sh.
+if grep -q 'path_contains_dir() {' "$INSTALL_SH" && grep -q '\*":\$2:"\*) return 0' "$INSTALL_SH"; then
+    pass "install.sh defines path_contains_dir with colon-wrapped matching"
+else
+    fail "install.sh defines path_contains_dir with colon-wrapped matching" "helper missing or changed"
+fi
+
+assert_true  "matches a middle PATH entry" pc_test "/usr/bin:/opt/homebrew/bin:/bin" "/opt/homebrew/bin"
+assert_true  "matches the first PATH entry" pc_test "/opt/homebrew/bin:/usr/bin" "/opt/homebrew/bin"
+assert_true  "matches the last PATH entry"  pc_test "/usr/bin:/opt/homebrew/bin" "/opt/homebrew/bin"
+assert_true  "matches a single-entry PATH"  pc_test "/opt/homebrew/bin" "/opt/homebrew/bin"
+assert_false "rejects a directory not present" pc_test "/usr/bin:/bin" "$HOME/.local/bin"
+# The trap a naive substring check falls into.
+assert_false "rejects a partial-prefix match" pc_test "/usr/local/bin2:/bin" "/usr/local/bin"
+assert_false "rejects a partial-suffix match" pc_test "/opt/x/usr/local/bin:/bin" "/usr/local/bin"
+assert_false "rejects an empty PATH" pc_test "" "/usr/local/bin"
 
 # ---------------------------------------------------------------------------
 section "CLI contract"
@@ -173,11 +213,11 @@ section "Idempotency"
 IDEM_HOME="$SANDBOX_ROOT/idem"
 run_installer "$IDEM_HOME" SHELL=/bin/zsh
 FIRST=$(md5 -q "$IDEM_HOME/.zshrc" 2>/dev/null || md5sum "$IDEM_HOME/.zshrc" | cut -d' ' -f1)
-BACKUPS_1=$(ls "$IDEM_HOME"/.zshrc.bak-* 2>/dev/null | wc -l | tr -d ' ')
+BACKUPS_1=$(find "$IDEM_HOME" -maxdepth 1 -name '.zshrc.bak-*' 2>/dev/null | wc -l | tr -d ' ')
 
 run_installer "$IDEM_HOME" SHELL=/bin/zsh
 SECOND=$(md5 -q "$IDEM_HOME/.zshrc" 2>/dev/null || md5sum "$IDEM_HOME/.zshrc" | cut -d' ' -f1)
-BACKUPS_2=$(ls "$IDEM_HOME"/.zshrc.bak-* 2>/dev/null | wc -l | tr -d ' ')
+BACKUPS_2=$(find "$IDEM_HOME" -maxdepth 1 -name '.zshrc.bak-*' 2>/dev/null | wc -l | tr -d ' ')
 
 assert_eq "$FIRST" "$SECOND" "a second run leaves the rc file unchanged"
 assert_eq "$BACKUPS_1" "$BACKUPS_2" "a second run creates no additional backup"
@@ -225,12 +265,12 @@ section "install.ps1"
 # ---------------------------------------------------------------------------
 
 if command -v pwsh >/dev/null 2>&1; then
-    PS_ERR=$(pwsh -NoProfile -c "
+    # Test the command directly rather than inspecting $? afterwards.
+    if PS_ERR=$(pwsh -NoProfile -c "
         \$errors = \$null
         [System.Management.Automation.Language.Parser]::ParseFile('$INSTALL_PS1', [ref]\$null, [ref]\$errors) | Out-Null
         if (\$errors.Count -gt 0) { \$errors | ForEach-Object { \$_.Message }; exit 1 }
-        exit 0" 2>&1)
-    if [[ $? -eq 0 ]]; then
+        exit 0" 2>&1); then
         pass "install.ps1 parses without syntax errors"
     else
         fail "install.ps1 parses without syntax errors" "$PS_ERR"
