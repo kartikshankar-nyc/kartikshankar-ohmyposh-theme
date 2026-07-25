@@ -80,12 +80,19 @@ BASE=$(render "$THEME")
 assert_contains "$BASE" "$(whoami)" "username segment shows the current user"
 
 # Oh My Posh renders the short hostname; compare against the first label.
-SHORT_HOST=$(hostname -s 2>/dev/null || hostname | cut -d. -f1)
-assert_contains "$BASE" "$SHORT_HOST" "hostname segment shows the live hostname"
+SHORT_HOST=$(hostname -s 2>/dev/null || hostname 2>/dev/null || uname -n 2>/dev/null || true)
+SHORT_HOST=${SHORT_HOST%%.*}
 
-# The hostname must come from the template, not be baked in as a literal.
 THEME_TEXT=$(cat "$THEME")
-assert_not_contains "$THEME_TEXT" "$SHORT_HOST" "hostname is not hardcoded in the theme file"
+if [[ -z "$SHORT_HOST" ]]; then
+    # Guard explicitly: an empty needle makes both of the assertions below
+    # meaningless (one passes vacuously, the other always fails).
+    skip "could not determine the hostname on this system"
+else
+    assert_contains "$BASE" "$SHORT_HOST" "hostname segment shows the live hostname"
+    # The hostname must come from the template, not be baked in as a literal.
+    assert_not_contains "$THEME_TEXT" "$SHORT_HOST" "hostname is not hardcoded in the theme file"
+fi
 assert_contains "$THEME_TEXT" "{{ .HostName }}" "hostname segment uses the .HostName template"
 assert_contains "$THEME_TEXT" "{{ .UserName }}" "username segment uses the .UserName template"
 

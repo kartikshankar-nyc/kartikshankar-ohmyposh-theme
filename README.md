@@ -1,8 +1,13 @@
 # Kartik's Oh My Posh Theme
 
+[![CI](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/actions/workflows/ci.yml)
+
 A cross-platform terminal prompt for [Oh My Posh](https://ohmyposh.dev/): OS-aware icons,
 colour-coded git state, and a right-aligned clock. Works in zsh, bash, PowerShell, Command
 Prompt, and Git Bash on macOS, Linux, and Windows.
+
+The installers and test suites run in CI on Linux, Windows, macOS arm64, and macOS Intel
+on every push, so "works cross-platform" is a measured claim rather than an aspiration.
 
 ![Theme preview](segment_images/preview.svg)
 

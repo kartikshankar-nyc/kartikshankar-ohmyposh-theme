@@ -249,8 +249,14 @@ section "Generated init line is valid shell"
 # ---------------------------------------------------------------------------
 
 INIT_LINE=$(grep "oh-my-posh init zsh" "$IDEM_HOME/.zshrc" | head -1)
-assert_true "the generated zsh init line is syntactically valid" \
-    zsh -n -c "$INIT_LINE"
+if command -v zsh >/dev/null 2>&1; then
+    assert_true "the generated zsh init line is syntactically valid" \
+        zsh -n -c "$INIT_LINE"
+else
+    # zsh is not installed on every CI image; the line is still generated and
+    # asserted structurally above.
+    skip "zsh not installed; cannot syntax-check the generated zsh init line"
+fi
 
 BASH_LINE=$(grep -h "oh-my-posh init bash" "$BOTH_HOME/.bash_profile" "$BOTH_HOME/.bashrc" 2>/dev/null | head -1)
 if [[ -n "$BASH_LINE" ]]; then
