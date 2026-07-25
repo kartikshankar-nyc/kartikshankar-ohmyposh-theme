@@ -270,6 +270,10 @@ Preview a change without touching your shell config:
 oh-my-posh print primary --config kartikshankar.omp.json
 ```
 
+The theme is verified against Oh My Posh 25.x and 29.x. Version 29 renamed the
+`POSH_THEME` environment variable to `POSH_CONFIG`; the theme itself is unaffected, but
+scripts of your own that read `POSH_THEME` will need updating.
+
 A note on the schema: the theme declares `"version": 3` and uses `properties` rather than
 the newer `options` key. That is deliberate — it is what `oh-my-posh config migrate`
 currently emits, and it keeps the theme working on older Oh My Posh builds still shipping

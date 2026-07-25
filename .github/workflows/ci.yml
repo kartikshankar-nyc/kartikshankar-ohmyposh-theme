@@ -99,11 +99,26 @@ jobs:
           grep -q "kartikshankar oh-my-posh theme" "$RC" \
             || { echo "::error::installer did not write its managed block"; exit 1; }
 
-          # The generated line must work in a real shell, not just parse.
-          POSH_THEME_SEEN=$(bash -c "source '$RC' >/dev/null 2>&1; printf '%s' \"\$POSH_THEME\"")
-          echo "POSH_THEME resolved to: $POSH_THEME_SEEN"
-          [ -f "$POSH_THEME_SEEN" ] \
-            || { echo "::error::theme path from the rc file does not exist"; exit 1; }
+          # The generated line must work in a real shell, not merely parse.
+          # Oh My Posh renamed POSH_THEME to POSH_CONFIG in v29, so accept
+          # either and fail only if neither is set. Errors are surfaced rather
+          # than discarded: hiding them turned a variable rename into a silent
+          # empty result that looked like a broken install.
+          CONFIG_SEEN=$(bash -c "source '$RC' 2>/tmp/init.err >/dev/null; printf '%s' \"\${POSH_CONFIG:-\$POSH_THEME}\"")
+          if [ -s /tmp/init.err ]; then
+            echo "stderr from sourcing the rc file:"
+            cat /tmp/init.err
+          fi
+          echo "config path resolved to: ${CONFIG_SEEN:-<empty>}"
+          [ -n "$CONFIG_SEEN" ] \
+            || { echo "::error::sourcing the rc file set neither POSH_CONFIG nor POSH_THEME"; exit 1; }
+          [ -f "$CONFIG_SEEN" ] \
+            || { echo "::error::config path from the rc file does not exist: $CONFIG_SEEN"; exit 1; }
+
+          # And the prompt must actually render through that rc file.
+          bash -c "source '$RC' >/dev/null 2>&1; oh-my-posh print primary --config \"\${POSH_CONFIG:-\$POSH_THEME}\"" \
+            | head -c 200
+          echo
 
           echo "A Nerd Font was installed to:"
           ls "$SANDBOX/.local/share/fonts" 2>/dev/null \
