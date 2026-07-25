@@ -47,15 +47,31 @@ esac
 section "OS segment resolves the current platform"
 # ---------------------------------------------------------------------------
 
+# On Linux, Oh My Posh prefers a distro-specific icon key (ubuntu, fedora,
+# arch...) and only falls back to the generic "linux" key when it does not
+# recognise the distribution. Target whichever key actually applies here.
+# See https://ohmyposh.dev/docs/segments/system/os
+ICON_KEY="$HOST_OS"
+if [[ "$HOST_OS" == "linux" && -r /etc/os-release ]]; then
+    DISTRO_ID=$(. /etc/os-release 2>/dev/null && printf '%s' "${ID:-}")
+    if [[ -n "$DISTRO_ID" ]]; then
+        # Does the schema know this distro? Probe it with a sentinel.
+        PROBE=$(variant ".blocks[0].segments[0].properties.\"${DISTRO_ID}\" = \"DISTROPROBE\"")
+        if [[ -n "$PROBE" ]] && render "$PROBE" | grep -q "DISTROPROBE"; then
+            ICON_KEY="$DISTRO_ID"
+        fi
+    fi
+fi
+
 if [[ "$HOST_OS" == "unknown" ]]; then
     skip "unrecognised platform $OSTYPE; cannot assert OS icon wiring"
 else
-    pass "detected host platform: $HOST_OS"
+    pass "detected host platform: $HOST_OS (icon key in effect: $ICON_KEY)"
 
-    # Substituting a sentinel for this platform's key must change the output.
-    CFG=$(variant ".blocks[0].segments[0].properties.${HOST_OS} = \"OSSENTINEL\"")
+    # Substituting a sentinel for the key in effect must change the output.
+    CFG=$(variant ".blocks[0].segments[0].properties.\"${ICON_KEY}\" = \"OSSENTINEL\"")
     OUT=$(render "$CFG")
-    assert_contains "$OUT" "OSSENTINEL" "the '${HOST_OS}' icon key drives the rendered OS icon"
+    assert_contains "$OUT" "OSSENTINEL" "the '${ICON_KEY}' icon key drives the rendered OS icon"
 
     # And the other platforms' keys must NOT affect this machine's output.
     for other in macos linux windows; do
@@ -65,9 +81,12 @@ else
         assert_not_contains "$OUT" "WRONGOS" "the '${other}' icon key does not apply on ${HOST_OS}"
     done
 
-    # Each platform key must carry a distinct glyph.
-    ICONS=$(jq -r '.blocks[0].segments[0].properties | [.macos, .linux, .windows] | @tsv' "$THEME")
-    UNIQUE=$(printf '%s' "$ICONS" | tr '\t' '\n' | sort -u | wc -l | tr -d ' ')
+    # Each platform key must carry a distinct glyph. Compare inside jq rather
+    # than with `sort -u`: in a UTF-8 locale, BSD sort assigns no collation
+    # weight to Private Use Area codepoints and reports all three glyphs as
+    # equal, which made this pass under C.UTF-8 and fail on a macOS CI runner.
+    UNIQUE=$(jq -r '.blocks[0].segments[0].properties
+                    | [.macos, .linux, .windows] | unique | length' "$THEME")
     assert_eq "3" "$UNIQUE" "macos, linux, and windows use three distinct icons"
 fi
 

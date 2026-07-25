@@ -108,7 +108,7 @@ setting silently overrides the main font for exactly the characters this theme d
 
 | Segment | Shows | Preview |
 |---|---|---|
-| OS icon | Apple, Linux, or Windows, detected at runtime | ![OS icon](segment_images/apple_icon.svg) |
+| OS icon | Apple, Linux, or Windows, detected at runtime<sup>1</sup> | ![OS icon](segment_images/apple_icon.svg) |
 | Username | Current user | ![Username](segment_images/username.svg) |
 | Hostname | Current machine | ![Hostname](segment_images/computer_name.svg) |
 | Root | Appears only when running as root or administrator | ![Root](segment_images/root_indicator.svg) |
@@ -116,6 +116,13 @@ setting silently overrides the main font for exactly the characters this theme d
 | Git | Branch, staged and unstaged counts, stash count | ![Git](segment_images/git_status.svg) |
 | Clock | Right-aligned, 24-hour | ![Time](segment_images/time_display.svg) |
 | Prompt | Red `❯` on its own line | ![Prompt](segment_images/prompt_character.svg) |
+
+<sup>1</sup> On Linux, Oh My Posh prefers a distribution-specific logo when it recognises the
+distro — Ubuntu shows the Ubuntu mark, Fedora the Fedora mark, and so on. The generic Tux
+icon configured under the `linux` key is the fallback for distributions it does not
+recognise. This is Oh My Posh behaviour, not a theme setting; see the
+[os segment docs](https://ohmyposh.dev/docs/segments/system/os). To force one icon
+everywhere, set the distro keys explicitly in `kartikshankar.omp.json`.
 
 ### Git colours
 

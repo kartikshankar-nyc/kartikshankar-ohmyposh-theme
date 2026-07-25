@@ -282,17 +282,33 @@ if command -v pwsh >/dev/null 2>&1; then
         fail "install.ps1 parses without syntax errors" "$PS_ERR"
     fi
 
-    # Exercise the profile block editor against a throwaway profile.
-    PS_PROFILE="$SANDBOX_ROOT/profile.ps1"
-    printf "Set-Alias ll Get-ChildItem\n\$env:EDITOR = 'vim'\n" > "$PS_PROFILE"
+    # install.ps1 supports Windows and macOS and exits early on Linux by design,
+    # so only exercise it where it is meant to run. pwsh is preinstalled on Linux
+    # CI images, which would otherwise make these fail for the wrong reason.
+    case "$OSTYPE" in
+        darwin*|msys*|cygwin*) PS1_RUNNABLE=true ;;
+        *)                     PS1_RUNNABLE=false ;;
+    esac
 
-    pwsh -NoProfile -c "\$PROFILE = '$PS_PROFILE'; . '$INSTALL_PS1' -Local -NoFont" >/dev/null 2>&1
-    PS_CONTENT=$(cat "$PS_PROFILE")
-    assert_contains "$PS_CONTENT" "Set-Alias ll"  "install.ps1 preserves existing profile content"
-    assert_contains "$PS_CONTENT" "$MARKER_BEGIN" "install.ps1 adds its managed block"
+    if [[ "$PS1_RUNNABLE" != true ]]; then
+        skip "install.ps1 targets Windows and macOS; not executing it on this platform"
 
-    pwsh -NoProfile -c "\$PROFILE = '$PS_PROFILE'; . '$INSTALL_PS1' -Local -NoFont" >/dev/null 2>&1
-    assert_eq "1" "$(grep -c "$MARKER_BEGIN" "$PS_PROFILE")" "install.ps1 is idempotent"
+        # It must refuse clearly rather than fail obscurely.
+        LINUX_OUT=$(pwsh -NoProfile -c ". '$INSTALL_PS1' -Local -NoFont" 2>&1 || true)
+        assert_contains "$LINUX_OUT" "install.sh" "install.ps1 redirects Linux users to install.sh"
+    else
+        # Exercise the profile block editor against a throwaway profile.
+        PS_PROFILE="$SANDBOX_ROOT/profile.ps1"
+        printf "Set-Alias ll Get-ChildItem\n\$env:EDITOR = 'vim'\n" > "$PS_PROFILE"
+
+        pwsh -NoProfile -c "\$PROFILE = '$PS_PROFILE'; . '$INSTALL_PS1' -Local -NoFont" >/dev/null 2>&1
+        PS_CONTENT=$(cat "$PS_PROFILE")
+        assert_contains "$PS_CONTENT" "Set-Alias ll"  "install.ps1 preserves existing profile content"
+        assert_contains "$PS_CONTENT" "$MARKER_BEGIN" "install.ps1 adds its managed block"
+
+        pwsh -NoProfile -c "\$PROFILE = '$PS_PROFILE'; . '$INSTALL_PS1' -Local -NoFont" >/dev/null 2>&1
+        assert_eq "1" "$(grep -c "$MARKER_BEGIN" "$PS_PROFILE")" "install.ps1 is idempotent"
+    fi
 else
     skip "pwsh not installed; skipping install.ps1 execution tests"
 fi
