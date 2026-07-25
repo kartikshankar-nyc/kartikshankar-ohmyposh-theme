@@ -1,8 +1,13 @@
 # Kartik's Oh My Posh Theme
 
+[![CI](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikshankar-nyc/kartikshankar-ohmyposh-theme/actions/workflows/ci.yml)
+
 A cross-platform terminal prompt for [Oh My Posh](https://ohmyposh.dev/): OS-aware icons,
 colour-coded git state, and a right-aligned clock. Works in zsh, bash, PowerShell, Command
 Prompt, and Git Bash on macOS, Linux, and Windows.
+
+The installers and test suites run in CI on Linux, Windows, macOS arm64, and macOS Intel
+on every push, so "works cross-platform" is a measured claim rather than an aspiration.
 
 ![Theme preview](segment_images/preview.svg)
 
@@ -103,7 +108,7 @@ setting silently overrides the main font for exactly the characters this theme d
 
 | Segment | Shows | Preview |
 |---|---|---|
-| OS icon | Apple, Linux, or Windows, detected at runtime | ![OS icon](segment_images/apple_icon.svg) |
+| OS icon | Apple, Linux, or Windows, detected at runtime<sup>1</sup> | ![OS icon](segment_images/apple_icon.svg) |
 | Username | Current user | ![Username](segment_images/username.svg) |
 | Hostname | Current machine | ![Hostname](segment_images/computer_name.svg) |
 | Root | Appears only when running as root or administrator | ![Root](segment_images/root_indicator.svg) |
@@ -111,6 +116,13 @@ setting silently overrides the main font for exactly the characters this theme d
 | Git | Branch, staged and unstaged counts, stash count | ![Git](segment_images/git_status.svg) |
 | Clock | Right-aligned, 24-hour | ![Time](segment_images/time_display.svg) |
 | Prompt | Red `❯` on its own line | ![Prompt](segment_images/prompt_character.svg) |
+
+<sup>1</sup> On Linux, Oh My Posh prefers a distribution-specific logo when it recognises the
+distro — Ubuntu shows the Ubuntu mark, Fedora the Fedora mark, and so on. The generic Tux
+icon configured under the `linux` key is the fallback for distributions it does not
+recognise. This is Oh My Posh behaviour, not a theme setting; see the
+[os segment docs](https://ohmyposh.dev/docs/segments/system/os). To force one icon
+everywhere, set the distro keys explicitly in `kartikshankar.omp.json`.
 
 ### Git colours
 
@@ -257,6 +269,10 @@ Preview a change without touching your shell config:
 ```bash
 oh-my-posh print primary --config kartikshankar.omp.json
 ```
+
+The theme is verified against Oh My Posh 25.x and 29.x. Version 29 renamed the
+`POSH_THEME` environment variable to `POSH_CONFIG`; the theme itself is unaffected, but
+scripts of your own that read `POSH_THEME` will need updating.
 
 A note on the schema: the theme declares `"version": 3` and uses `properties` rather than
 the newer `options` key. That is deliberate — it is what `oh-my-posh config migrate`

@@ -1,0 +1,218 @@
+name: CI
+
+# The theme claims to work on macOS, Linux, and Windows. Before this workflow
+# existed, only macOS arm64 was ever actually executed; every other platform was
+# reviewed but unverified. This runs the suites on real runners for each.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- Unix ----
+  unix:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux (x64)
+          - os: macos-latest
+            label: macOS (arm64)
+          # macos-13 was retired; macos-15-intel is the current x64 image.
+          - os: macos-15-intel
+            label: macOS (Intel)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        shell: bash
+        run: |
+          if command -v jq >/dev/null 2>&1; then
+            echo "jq present: $(jq --version)"
+            exit 0
+          fi
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y jq
+          else
+            brew install jq
+          fi
+
+      - name: Install Oh My Posh
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://ohmyposh.dev/install.sh | bash -s -- -d "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          oh-my-posh --version
+          jq --version
+          bash --version | head -1
+
+      - name: Install shellcheck
+        shell: bash
+        run: |
+          if command -v shellcheck >/dev/null 2>&1; then
+            shellcheck --version | head -2
+            exit 0
+          fi
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get install -y shellcheck
+          else
+            brew install shellcheck
+          fi
+
+      - name: Run test suites
+        shell: bash
+        run: ./run-all-tests.sh
+
+      # The suites use --local/--no-font and a sandboxed HOME. This exercises the
+      # real entry point a user runs, including the font path, end to end.
+      - name: Full installer run against a throwaway HOME
+        shell: bash
+        run: |
+          set -euo pipefail
+          SANDBOX="$(mktemp -d)"
+          env -u ZDOTDIR HOME="$SANDBOX" SHELL=/bin/bash ./install.sh --local
+
+          RC="$SANDBOX/.bashrc"
+          [ "$RUNNER_OS" = "macOS" ] && RC="$SANDBOX/.bash_profile"
+
+          echo "--- $RC ---"
+          cat "$RC"
+
+          grep -q "kartikshankar oh-my-posh theme" "$RC" \
+            || { echo "::error::installer did not write its managed block"; exit 1; }
+
+          # The generated line must work in a real shell, not merely parse.
+          # Oh My Posh renamed POSH_THEME to POSH_CONFIG in v29, so accept
+          # either and fail only if neither is set. Errors are surfaced rather
+          # than discarded: hiding them turned a variable rename into a silent
+          # empty result that looked like a broken install.
+          CONFIG_SEEN=$(bash -c "source '$RC' 2>/tmp/init.err >/dev/null; printf '%s' \"\${POSH_CONFIG:-\$POSH_THEME}\"")
+          if [ -s /tmp/init.err ]; then
+            echo "stderr from sourcing the rc file:"
+            cat /tmp/init.err
+          fi
+          echo "config path resolved to: ${CONFIG_SEEN:-<empty>}"
+          [ -n "$CONFIG_SEEN" ] \
+            || { echo "::error::sourcing the rc file set neither POSH_CONFIG nor POSH_THEME"; exit 1; }
+          [ -f "$CONFIG_SEEN" ] \
+            || { echo "::error::config path from the rc file does not exist: $CONFIG_SEEN"; exit 1; }
+
+          # And the prompt must actually render through that rc file.
+          bash -c "source '$RC' >/dev/null 2>&1; oh-my-posh print primary --config \"\${POSH_CONFIG:-\$POSH_THEME}\"" \
+            | head -c 200
+          echo
+
+          echo "A Nerd Font was installed to:"
+          ls "$SANDBOX/.local/share/fonts" 2>/dev/null \
+            || ls "$SANDBOX/Library/Fonts" 2>/dev/null \
+            || echo "  (none - font step reported its own status above)"
+
+      - name: PowerShell installer suite
+        # install.ps1 supports Windows and macOS; it exits early on Linux.
+        if: runner.os == 'macOS'
+        shell: bash
+        run: pwsh -NoProfile -File ./test-install-ps1.ps1
+
+  # ------------------------------------------------------------- Windows ----
+  windows:
+    name: Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Oh My Posh
+        shell: pwsh
+        run: |
+          winget install JanDeDobbeleer.OhMyPosh -e --accept-source-agreements --accept-package-agreements --disable-interactivity 2>$null
+          $ompDir = "$env:LOCALAPPDATA\Programs\oh-my-posh\bin"
+          if (-not (Test-Path $ompDir)) {
+            Write-Host "winget unavailable or failed; using the official installer"
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://ohmyposh.dev/install.ps1'))
+          }
+          if (Test-Path $ompDir) { $ompDir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8 }
+
+      - name: Verify toolchain
+        shell: pwsh
+        run: |
+          oh-my-posh --version
+          $PSVersionTable.PSVersion.ToString()
+
+      - name: PowerShell installer suite
+        shell: pwsh
+        run: pwsh -NoProfile -File ./test-install-ps1.ps1
+
+      # install.sh advertises Git Bash support, which has never been executed.
+      # Git Bash ships with the runner image at C:\Program Files\Git.
+      - name: install.sh under Git Bash
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "OSTYPE=$OSTYPE"
+          bash -n install.sh
+
+          SANDBOX="$(mktemp -d)"
+          env -u ZDOTDIR HOME="$SANDBOX" SHELL=/usr/bin/bash ./install.sh --local --no-font
+
+          RC="$SANDBOX/.bashrc"
+          echo "--- $RC ---"
+          cat "$RC"
+          grep -q "kartikshankar oh-my-posh theme" "$RC" \
+            || { echo "::error::Git Bash: installer did not write its managed block"; exit 1; }
+
+      - name: Theme renders on Windows
+        shell: pwsh
+        run: |
+          $out = oh-my-posh print primary --config ./kartikshankar.omp.json --shell pwsh
+          if (-not $out) { Write-Error "empty prompt output"; exit 1 }
+          if ($out -match 'unable to create text') { Write-Error "template error"; exit 1 }
+          Write-Host "rendered OK ($($out.Length) chars)"
+
+  # ------------------------------------------------------- Theme integrity --
+  theme:
+    name: Theme and fonts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq and Oh My Posh
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y jq
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://ohmyposh.dev/install.sh | bash -s -- -d "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Theme validates against the published Oh My Posh schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/omp-schema.json \
+            https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json
+          pip install --quiet check-jsonschema
+          check-jsonschema --schemafile /tmp/omp-schema.json kartikshankar.omp.json
+
+      - name: Bundled fonts are real fonts
+        shell: bash
+        run: ./test-comprehensive-validation.sh
