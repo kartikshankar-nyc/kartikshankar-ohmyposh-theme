@@ -1,20 +1,18 @@
-# OS specific files
+# OS files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editor directories and files
+# Editors
 .idea/
 .vscode/
 *.swp
 *.swo
-*~ 
+*~
 
-# Backup files
+# Backups written by the installers when they edit a shell config
 *.bak
+*.bak-*
 
-# Unused image directories
-zoomed_segments/
-better_segments/
-high_res_segments/
-new_segment_images/ 
+# Local test scratch
+.installer.log

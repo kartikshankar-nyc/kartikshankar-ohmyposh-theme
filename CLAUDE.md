@@ -4,27 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a custom Oh My Posh terminal prompt theme (`kartikshankar.omp.json`) with cross-platform installation scripts and a test suite. Oh My Posh is a prompt theme engine for any shell. The theme uses Nerd Font icons and a specific color palette.
+A custom Oh My Posh terminal prompt theme (`kartikshankar.omp.json`) with cross-platform
+installers and a behavioural test suite. Oh My Posh is a prompt theme engine for any shell.
+The theme uses Nerd Font glyphs and a fixed colour palette.
 
 ## Key Files
 
-- `kartikshankar.omp.json` - The theme definition (Oh My Posh v3 schema). This is the core artifact.
-- `install.sh` - Bash installer for macOS/Linux/WSL/Git Bash
-- `install.ps1` - PowerShell installer for Windows/macOS
-- `fonts/` - Bundled Hack Nerd Font TTF files (fallback when network install fails)
-- `segment_showcase.json` - Minimal Oh My Posh config used for generating segment preview images
+- `kartikshankar.omp.json` — the theme definition. This is the core artifact.
+- `install.sh` — installer for macOS, Linux, WSL, and Git Bash
+- `install.ps1` — installer for Windows and macOS (PowerShell)
+- `test-lib.sh` — shared assertion helpers sourced by every test suite
+- `fonts/` — genuine Hack Nerd Font v3.4.0 TTFs, with checksums in `fonts/README.md`
+- `segment_images/` — hand-authored SVG mockups used by the README
 
 ## Theme Architecture
 
-The theme (`kartikshankar.omp.json`) has 3 prompt blocks:
+Three prompt blocks:
 
-1. **Left-aligned primary line**: OS icon (diamond style) -> username (powerline) -> hostname (powerline) -> root indicator (powerline) -> directory path (powerline) -> git status (powerline with dynamic background colors)
-2. **Right-aligned primary line**: Time display (diamond style)
-3. **Newline input line**: Red `>` prompt character
+1. **Left, primary line**: OS icon (diamond) → username (powerline) → hostname → root
+   indicator → directory → git status
+2. **Right, primary line**: clock (diamond)
+3. **New line**: red `❯` input prompt
 
-The git segment uses `background_templates` to dynamically change color based on repository state (dirty = `#e76f51`, ahead+behind = `#f4a261`, ahead = `#2a9d8f`, behind = `#e9c46a`).
+The git segment uses `background_templates` to change colour with repository state:
+dirty `#e76f51`, ahead+behind `#f4a261`, ahead `#2a9d8f`, behind `#e9c46a`, clean `#1e756a`.
 
-### Color Palette
+### Colour palette
 
 | Name | Hex |
 |------|-----|
@@ -38,42 +43,58 @@ The git segment uses `background_templates` to dynamically change color based on
 
 ## Commands
 
-### Run all tests
 ```bash
-./run-all-tests.sh
+./run-all-tests.sh                 # all suites
+./run-all-tests.sh theme           # suites matching a substring
+./test-theme.sh                    # one suite directly
+
+oh-my-posh print primary --config kartikshankar.omp.json   # preview
+jq . kartikshankar.omp.json                                # validate JSON
+./install.sh --dry-run                                     # preview installer changes
 ```
 
-### Run individual test suites
-```bash
-./test-theme.sh                  # Theme validation, JSON check, segment presence, rendering, performance
-./test-dynamic-segments.sh       # OS detection, hostname dynamic logic, rendered output
-./test-installation-scripts.sh   # Script existence, syntax, cross-platform feature checks
-```
+Tests require `oh-my-posh` and `jq`.
 
-### Preview the theme
-```bash
-oh-my-posh print primary --config kartikshankar.omp.json
-```
+## Conventions That Matter Here
 
-### Validate theme JSON
-```bash
-cat kartikshankar.omp.json | jq '.'
-```
+These encode bugs this repository has actually shipped. Preserve them.
 
-## Testing Requirements
+- **The macOS OS-segment key is `macos`, not `darwin`.** Oh My Posh silently ignores
+  unknown keys and falls back to a built-in icon, so `darwin` looks like it works on a Mac
+  while doing nothing.
+- **Never infer the user's shell from `$BASH_VERSION` inside a bash script.** It is always
+  set. Use `$SHELL`. Getting this wrong writes the config to `~/.bash_profile` for zsh
+  users, and the prompt silently never appears.
+- **Never rewrite rc files with a greedy `sed`.** The installers manage a marked block
+  (`# >>> kartikshankar oh-my-posh theme >>>` … `# <<< … <<<`), back the file up first, and
+  leave everything outside the block untouched.
+- **Verify, do not assume, that a font installed.** Check for the font afterwards rather
+  than reporting success because a command ran.
+- **Validate that font files are fonts.** Check the TrueType signature (`0x00010000`). This
+  repository once shipped four GitHub 404 HTML pages named `*.ttf`; they were non-empty and
+  correctly sized, and every existence and size check passed.
+- **Icons in the theme JSON are `\uXXXX` escapes**, never raw characters, so the file is
+  readable without a Nerd Font. A test enforces this.
+- **The theme stays on `"version": 3` with `properties`** rather than the newer `options`
+  key, for compatibility with older Oh My Posh builds. This is what `oh-my-posh config
+  migrate` currently emits.
 
-- Tests require `oh-my-posh` and `jq` to be installed
-- `test-theme.sh` creates a temporary git repo to test git segment rendering
-- Tests are bash scripts that use exit codes (0 = pass, non-zero = fail)
-- Cross-platform testing across shells (bash, zsh, PowerShell) is expected per CONTRIBUTING.md
+## Writing Tests
 
-## Installation Scripts
+Assertions live in `test-lib.sh`. A test must execute the thing under test and inspect the
+result. Grepping a script for a keyword is not a test — an earlier version of this suite
+reported "52 passed, 0 failed" against a repository whose installer did not work on macOS
+and whose bundled fonts were HTML.
 
-Both installers follow the same pattern: detect OS -> install package manager -> install Oh My Posh -> install Hack Nerd Font (with bundled font fallback) -> clone/update repo -> configure shell RC file -> apply theme.
+For installer tests, run `install.sh` against a throwaway `HOME`. Override `ZDOTDIR` as
+well: zsh honours it over `$HOME`, and leaving it set sends writes to the real home
+directory.
 
-- `install.sh` supports: macOS (Homebrew), Linux (apt/dnf/yum/pacman), WSL, Git Bash on Windows
-- `install.ps1` supports: Windows (winget), macOS (Homebrew). Configures PowerShell, CMD (via Lua/registry), and Git Bash.
+## Installer Behaviour
 
-## Working with the Theme JSON
+Both installers: detect the platform → install Oh My Posh → install a Nerd Font (falling
+back to `fonts/`) → resolve the theme path → write a marked block into the relevant shell
+config → print the terminal-specific font instructions.
 
-The theme follows the [Oh My Posh v3 schema](https://ohmyposh.dev/docs/configuration/overview). Segment templates use Go template syntax (`{{ .HostName }}`, `{{ .UserName }}`, `{{ .Path }}`, etc.). When modifying segments, preserve the powerline/diamond style chain and ensure Nerd Font unicode escapes are valid.
+Neither claims to have applied the theme to the calling shell. They run in their own
+process and cannot change the parent shell's prompt; they tell the user to restart instead.

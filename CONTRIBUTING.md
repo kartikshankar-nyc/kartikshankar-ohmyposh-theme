@@ -1,36 +1,50 @@
-# Contributing to Kartik's Oh My Posh Theme
+# Contributing
 
-Thank you for considering contributing to this Oh My Posh theme! Here's how you can help:
+Thanks for considering a contribution. Issues and pull requests are both welcome.
 
-## Ways to Contribute
+## Before you open a pull request
 
-1. **Report Issues**: If you find any bugs or have suggestions, please open an issue.
-2. **Improve Documentation**: Help make the documentation clearer and more comprehensive.
-3. **Submit Enhancements**: Have ideas for improving the theme? Submit a pull request with your changes.
+Run the full suite. It must be green:
 
-## Pull Request Process
+```bash
+./run-all-tests.sh
+```
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Commit your changes (`git commit -m 'Add some amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
+It needs `oh-my-posh` and `jq`. If you changed an installer, also check it against a
+throwaway home directory rather than your own:
 
-## Development Guidelines
+```bash
+./install.sh --dry-run
+```
 
-- Please test your changes in different shells (Bash, Zsh, PowerShell) if possible
-- Maintain compatibility with existing features
-- Follow the existing style and formatting
-- Document any new features or significant changes
+## Development guidelines
 
-## Testing
+- **Test behaviour, not source text.** Assertions should run the thing and inspect the
+  result. Grepping a script for a keyword passes whether or not the code works — an
+  earlier version of this suite reported "52 passed, 0 failed" while the installer did not
+  work on macOS and the bundled fonts were HTML error pages.
+- **Add a regression test with any bug fix**, and confirm it fails before your fix and
+  passes after. That check is the point of the test.
+- **Keep icons as `\uXXXX` escapes** in `kartikshankar.omp.json`, never raw characters, so
+  the file stays readable without a Nerd Font. A test enforces this.
+- **Do not add unsupported keys to the theme.** Oh My Posh silently discards them, which
+  implies behaviour that does not exist. Check the
+  [schema](https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json)
+  first.
+- **Installers must never rewrite lines they did not add.** Edits go inside the managed
+  block, the file is backed up first, and a repeat run must be a no-op.
+- `install.sh` must parse under bash 3.2, which is what macOS ships.
 
-Before submitting a pull request, please test your changes:
+## Testing across platforms
 
-1. Run the `test-theme.sh` script to verify that the theme works correctly
-2. Test on different terminals if possible
+The suite runs on the platform you are on. If you can, verify changes on more than one of
+macOS, Linux, and Windows, and in more than one shell, before submitting. Note in the pull
+request what you actually tested and what you did not — that is more useful than a claim of
+full coverage.
 
-## Thank You
+## Pull request process
 
-Your contributions help make this theme better for everyone! 
+1. Fork and branch: `git checkout -b fix/short-description`
+2. Make your change and add or update tests
+3. Run `./run-all-tests.sh`
+4. Open a pull request describing the problem, the fix, and how you verified it
