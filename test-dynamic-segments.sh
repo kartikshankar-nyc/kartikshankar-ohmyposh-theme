@@ -1,152 +1,170 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Dynamic segment behaviour: values that change with the environment (OS icon,
+# hostname, username, working directory, root state, clock).
+#
+# These assertions substitute a sentinel value into a copy of the theme and
+# check that it appears in the rendered output. That proves the configuration
+# key is actually wired up, which a source-level grep cannot.
+#
+set -uo pipefail
 
-# ANSI color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored messages
-print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}❌ $1${NC}"
-}
-
-print_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
-}
-
-print_header() {
-    echo -e "\n${BLUE}$1${NC}"
-    echo -e "${BLUE}$(printf '=%.0s' {1..50})${NC}"
-}
-
-# Test script for dynamic segment functionality in Kartik's Oh My Posh Theme
-print_header "Testing Dynamic Segments in Kartik's Oh My Posh Theme"
-
-# Check if Oh My Posh is installed
-print_info "Checking Oh My Posh installation..."
-if ! command -v oh-my-posh &> /dev/null; then
-    print_error "Oh My Posh is not installed. Please install it first:"
-    echo "  - macOS: brew install oh-my-posh"
-    echo "  - Windows: winget install JanDeDobbeleer.OhMyPosh"
-    echo "  - Linux: curl -s https://ohmyposh.dev/install.sh | bash -s"
-    exit 1
-fi
-print_success "Oh My Posh is installed ($(oh-my-posh --version))"
-
-# Get the absolute path of the theme file
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-THEME_PATH="$SCRIPT_DIR/kartikshankar.omp.json"
+source "$SCRIPT_DIR/test-lib.sh"
 
-# Check if the theme file exists
-print_info "Checking theme file..."
-if [ ! -f "$THEME_PATH" ]; then
-    print_error "Theme file not found at: $THEME_PATH"
+THEME="$SCRIPT_DIR/kartikshankar.omp.json"
+
+command -v jq >/dev/null 2>&1 || { echo "jq is required to run this suite." >&2; exit 1; }
+if ! command -v oh-my-posh >/dev/null 2>&1; then
+    echo "oh-my-posh is required to run this suite." >&2
     exit 1
 fi
-print_success "Theme file found at: $THEME_PATH"
 
-# Test OS detection in the theme
-print_header "OS Detection Test"
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
 
-print_info "Detecting current OS..."
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    CURRENT_OS="darwin"
-    EXPECTED_ICON="\uf179" # Apple icon
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    CURRENT_OS="linux"
-    EXPECTED_ICON="\uf17c" # Linux icon
-elif [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ "$OSTYPE" == "win"* ]]; then
-    CURRENT_OS="windows"
-    EXPECTED_ICON="\ue70f" # Windows icon
+# render <config-file> -> plain text with escapes stripped
+render() {
+    oh-my-posh print primary --config "$1" --shell bash 2>&1 | strip_ansi
+}
+
+# Build a variant of the theme with a jq filter applied.
+variant() {
+    local out="$WORK/variant.json"
+    jq "$1" "$THEME" > "$out" || return 1
+    printf '%s\n' "$out"
+}
+
+case "$OSTYPE" in
+    darwin*) HOST_OS="macos" ;;
+    linux*)  HOST_OS="linux" ;;
+    msys*|cygwin*) HOST_OS="windows" ;;
+    *)       HOST_OS="unknown" ;;
+esac
+
+# ---------------------------------------------------------------------------
+section "OS segment resolves the current platform"
+# ---------------------------------------------------------------------------
+
+if [[ "$HOST_OS" == "unknown" ]]; then
+    skip "unrecognised platform $OSTYPE; cannot assert OS icon wiring"
 else
-    CURRENT_OS="unknown"
-    EXPECTED_ICON="\uf17a" # Generic icon
+    pass "detected host platform: $HOST_OS"
+
+    # Substituting a sentinel for this platform's key must change the output.
+    CFG=$(variant ".blocks[0].segments[0].properties.${HOST_OS} = \"OSSENTINEL\"")
+    OUT=$(render "$CFG")
+    assert_contains "$OUT" "OSSENTINEL" "the '${HOST_OS}' icon key drives the rendered OS icon"
+
+    # And the other platforms' keys must NOT affect this machine's output.
+    for other in macos linux windows; do
+        [[ "$other" == "$HOST_OS" ]] && continue
+        CFG=$(variant ".blocks[0].segments[0].properties.${other} = \"WRONGOS\"")
+        OUT=$(render "$CFG")
+        assert_not_contains "$OUT" "WRONGOS" "the '${other}' icon key does not apply on ${HOST_OS}"
+    done
+
+    # Each platform key must carry a distinct glyph.
+    ICONS=$(jq -r '.blocks[0].segments[0].properties | [.macos, .linux, .windows] | @tsv' "$THEME")
+    UNIQUE=$(printf '%s' "$ICONS" | tr '\t' '\n' | sort -u | wc -l | tr -d ' ')
+    assert_eq "3" "$UNIQUE" "macos, linux, and windows use three distinct icons"
 fi
-print_success "Detected OS: $CURRENT_OS"
 
-# Extract OS segment template from the theme file
-print_info "Checking OS segment in theme..."
-OS_SEGMENT=$(cat "$THEME_PATH" | jq -r '.blocks[0].segments[] | select(.type == "os") | .template')
+# ---------------------------------------------------------------------------
+section "Session segments reflect the live environment"
+# ---------------------------------------------------------------------------
 
-if [[ -z "$OS_SEGMENT" ]]; then
-    print_error "OS segment not found in theme"
-    exit 1
+BASE=$(render "$THEME")
+
+assert_contains "$BASE" "$(whoami)" "username segment shows the current user"
+
+# Oh My Posh renders the short hostname; compare against the first label.
+SHORT_HOST=$(hostname -s 2>/dev/null || hostname | cut -d. -f1)
+assert_contains "$BASE" "$SHORT_HOST" "hostname segment shows the live hostname"
+
+# The hostname must come from the template, not be baked in as a literal.
+THEME_TEXT=$(cat "$THEME")
+assert_not_contains "$THEME_TEXT" "$SHORT_HOST" "hostname is not hardcoded in the theme file"
+assert_contains "$THEME_TEXT" "{{ .HostName }}" "hostname segment uses the .HostName template"
+assert_contains "$THEME_TEXT" "{{ .UserName }}" "username segment uses the .UserName template"
+
+# ---------------------------------------------------------------------------
+section "Path segment tracks the working directory"
+# ---------------------------------------------------------------------------
+
+DIR_A="$WORK/alpha"; DIR_B="$WORK/beta"
+mkdir -p "$DIR_A" "$DIR_B"
+
+OUT_A=$(cd "$DIR_A" && render "$THEME")
+OUT_B=$(cd "$DIR_B" && render "$THEME")
+
+assert_contains "$OUT_A" "alpha" "path segment shows the current folder (alpha)"
+assert_contains "$OUT_B" "beta"  "path segment shows the current folder (beta)"
+assert_not_contains "$OUT_A" "beta" "path segment does not leak a stale directory"
+
+# style=folder means only the leaf directory is shown, not the full path.
+assert_not_contains "$OUT_A" "$WORK/alpha" "path segment uses folder style, not the full path"
+
+# ---------------------------------------------------------------------------
+section "Root segment"
+# ---------------------------------------------------------------------------
+
+# The root segment renders only for uid 0. Identify it by its bolt glyph
+# (U+F0E7) rather than its background colour: #e76f51 is shared with the
+# dirty-repository git background, so a colour check reports a false positive
+# in any repository with uncommitted changes.
+HAS_BOLT=$(printf '%s' "$BASE" | python3 -c "
+import sys
+print('yes' if chr(0xF0E7) in sys.stdin.read() else 'no')
+" 2>/dev/null || echo "unknown")
+
+if [[ "$HAS_BOLT" == "unknown" ]]; then
+    skip "python3 unavailable; cannot check the root indicator glyph"
+elif [[ "$(id -u)" -eq 0 ]]; then
+    assert_eq "yes" "$HAS_BOLT" "root indicator is shown when running as root"
+else
+    assert_eq "no" "$HAS_BOLT" "root indicator is hidden for a non-root user"
 fi
-print_success "OS segment found in theme"
 
-# Check if the OS segment uses the .Icon template property (oh-my-posh v25+ API)
-print_info "Verifying dynamic OS icon logic..."
-if [[ "$OS_SEGMENT" == *"{{ .Icon }}"* ]]; then
-    print_success "Theme uses .Icon template for dynamic OS icons"
-    # Also verify OS-specific icon properties are set
-    OS_PROPS=$(cat "$THEME_PATH" | jq -r '.blocks[0].segments[] | select(.type == "os") | .properties')
-    if [[ "$OS_PROPS" == *"darwin"* ]] && [[ "$OS_PROPS" == *"windows"* ]] && [[ "$OS_PROPS" == *"linux"* ]]; then
-        print_success "Theme includes OS-specific icon properties"
+# ---------------------------------------------------------------------------
+section "Time segment"
+# ---------------------------------------------------------------------------
+
+TIME_FMT=$(jq -r '.blocks[1].segments[0].properties.time_format' "$THEME")
+assert_eq "15:04:05" "$TIME_FMT" "time segment uses a 24-hour HH:MM:SS layout"
+
+if printf '%s' "$BASE" | grep -qE '[0-2][0-9]:[0-5][0-9]:[0-5][0-9]'; then
+    pass "time segment renders a HH:MM:SS timestamp"
+else
+    fail "time segment renders a HH:MM:SS timestamp" "output: $BASE"
+fi
+
+# The clock must advance between renders.
+T1=$(render "$THEME" | grep -oE '[0-2][0-9]:[0-5][0-9]:[0-5][0-9]' | head -1)
+sleep 1.1
+T2=$(render "$THEME" | grep -oE '[0-2][0-9]:[0-5][0-9]:[0-5][0-9]' | head -1)
+assert_ne "$T1" "$T2" "time segment advances between renders (not a cached literal)"
+
+# ---------------------------------------------------------------------------
+section "Shell compatibility"
+# ---------------------------------------------------------------------------
+
+# Oh My Posh emits shell-specific prompt-escape wrappers. Each supported shell
+# must produce output without errors.
+for sh in bash zsh pwsh; do
+    OUT=$(oh-my-posh print primary --config "$THEME" --shell "$sh" 2>&1)
+    if [[ -n "$OUT" ]] && ! printf '%s' "$OUT" | grep -qi "error\|unable to"; then
+        pass "renders cleanly for --shell $sh"
     else
-        print_warning "Theme may be missing OS-specific icon properties"
+        fail "renders cleanly for --shell $sh" "output: $OUT"
     fi
-else
-    print_error "Theme does not use .Icon template for OS segment"
-    echo "Current template: $OS_SEGMENT"
-    exit 1
-fi
+done
 
-# Test hostname detection in the theme
-print_header "Hostname Detection Test"
+# zsh needs %{...%} wrappers so it can compute the prompt width correctly.
+ZSH_OUT=$(oh-my-posh print primary --config "$THEME" --shell zsh 2>&1)
+assert_contains "$ZSH_OUT" '%{' "zsh output includes prompt-width escape wrappers"
 
-print_info "Detecting current hostname..."
-CURRENT_HOSTNAME=$(hostname)
-print_success "Detected hostname: $CURRENT_HOSTNAME"
+BASH_OUT=$(oh-my-posh print primary --config "$THEME" --shell bash 2>&1)
+assert_contains "$BASH_OUT" '\[' "bash output includes non-printing escape markers"
 
-# Extract hostname segment from the theme file
-print_info "Checking hostname segment in theme..."
-HOSTNAME_SEGMENT=$(cat "$THEME_PATH" | jq -r '.blocks[0].segments[] | select(.template | contains("HostName")) | .template')
-
-if [[ -z "$HOSTNAME_SEGMENT" ]]; then
-    print_error "Hostname segment not found in theme"
-    exit 1
-fi
-print_success "Hostname segment found in theme"
-
-# Check if the hostname segment uses the .HostName variable
-print_info "Verifying dynamic hostname logic..."
-if [[ "$HOSTNAME_SEGMENT" == *"{{ .HostName }}"* ]]; then
-    print_success "Theme includes dynamic hostname logic"
-else
-    print_error "Theme does not use dynamic hostname"
-    echo "Current template: $HOSTNAME_SEGMENT"
-    exit 1
-fi
-
-# Test rendering with current OS and hostname
-print_header "Rendering Test with Current System Values"
-
-print_info "Rendering theme with current system values..."
-RENDERED_OUTPUT=$(oh-my-posh print primary --config "$THEME_PATH")
-echo "$RENDERED_OUTPUT"
-echo ""
-
-# Final validation
-print_header "Test Results"
-
-if [[ "$OS_SEGMENT" == *"{{ .Icon }}"* ]] && \
-   [[ "$HOSTNAME_SEGMENT" == *"{{ .HostName }}"* ]]; then
-    print_success "Dynamic segments test passed! The theme adapts to different operating systems and hostnames."
-else
-    print_error "Dynamic segments test failed! Please review the theme configuration."
-fi
-
-echo ""
-print_info "Note: The rendered output above should show your current OS icon and hostname correctly."
-print_info "If you see placeholder characters or incorrect values, check your terminal's font configuration."
-echo "" 
+finish

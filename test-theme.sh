@@ -1,246 +1,206 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Theme correctness: schema shape, segment configuration, and what Oh My Posh
+# actually renders. Assertions run against the binary's output, not the source.
+#
+set -uo pipefail
 
-# ANSI color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored messages
-print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}❌ $1${NC}"
-}
-
-print_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
-}
-
-print_header() {
-    echo -e "\n${BLUE}$1${NC}"
-    echo -e "${BLUE}$(printf '=%.0s' {1..50})${NC}"
-}
-
-# Comprehensive test script for Kartik's Oh My Posh Theme
-print_header "Testing Kartik's Oh My Posh Theme"
-
-# Check if Oh My Posh is installed
-print_info "Checking Oh My Posh installation..."
-if ! command -v oh-my-posh &> /dev/null; then
-    print_error "Oh My Posh is not installed. Please install it first:"
-    echo "  - macOS: brew install oh-my-posh"
-    echo "  - Windows: winget install JanDeDobbeleer.OhMyPosh"
-    echo "  - Linux: curl -s https://ohmyposh.dev/install.sh | bash -s"
-    exit 1
-fi
-print_success "Oh My Posh is installed ($(oh-my-posh --version))"
-
-# Check for a Nerd Font
-print_info "Checking for Nerd Font..."
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    if brew list --cask | grep -q "font-.*-nerd-font"; then
-        print_success "Nerd Font is installed via Homebrew"
-    else
-        print_warning "No Nerd Font detected via Homebrew. Make sure you have one installed and configured in your terminal"
-        echo "   Visit https://www.nerdfonts.com/ or run: brew install --cask font-hack-nerd-font"
-    fi
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if fc-list | grep -i "nerd" &> /dev/null; then
-        print_success "Nerd Font is installed"
-    else
-        print_warning "No Nerd Font detected. Make sure you have one installed and configured in your terminal"
-        echo "   Visit https://www.nerdfonts.com/ for installation instructions"
-    fi
-else
-    print_warning "Nerd Font check not supported on this OS. Ensure you have a Nerd Font installed and configured."
-    echo "   Visit https://www.nerdfonts.com/ for installation instructions"
-fi
-
-# Get the absolute path of the theme file
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-THEME_PATH="$SCRIPT_DIR/kartikshankar.omp.json"
+source "$SCRIPT_DIR/test-lib.sh"
 
-# Check if the theme file exists
-print_info "Checking theme file..."
-if [ ! -f "$THEME_PATH" ]; then
-    print_error "Theme file not found at: $THEME_PATH"
-    exit 1
-fi
-print_success "Theme file found at: $THEME_PATH"
+THEME="$SCRIPT_DIR/kartikshankar.omp.json"
 
-# Validate JSON format
-print_info "Validating theme JSON format..."
-if ! cat "$THEME_PATH" | jq '.' &> /dev/null; then
-    print_error "Invalid JSON format in the theme file"
-    exit 1
-fi
-print_success "Theme JSON is valid"
+command -v jq >/dev/null 2>&1 || { echo "jq is required to run this suite." >&2; exit 1; }
 
-# Check schema version
-print_info "Checking theme schema version..."
-SCHEMA_VERSION=$(cat "$THEME_PATH" | jq -r '.version')
-if [[ "$SCHEMA_VERSION" -lt 2 ]]; then
-    print_warning "Theme uses schema version $SCHEMA_VERSION. Version 2 or higher is recommended."
+# ---------------------------------------------------------------------------
+section "Theme file and JSON validity"
+# ---------------------------------------------------------------------------
+
+assert_file_exists "$THEME" "theme file exists"
+assert_true "theme is valid JSON" jq -e . "$THEME"
+
+# Every Nerd Font glyph must be an escaped \uXXXX sequence rather than a raw
+# character, so the file stays readable in an editor without a Nerd Font.
+if grep -qP '[\x{e000}-\x{f8ff}]' "$THEME" 2>/dev/null; then
+    fail "theme uses \\uXXXX escapes for private-use glyphs" "found raw glyph characters"
+elif LC_ALL=C grep -q $'[\xee-\xef]' "$THEME"; then
+    fail "theme uses \\uXXXX escapes for private-use glyphs" "found raw glyph bytes"
 else
-    print_success "Theme uses schema version $SCHEMA_VERSION"
+    pass "theme uses \\uXXXX escapes for private-use glyphs"
 fi
 
-# Check for required blocks and segments
-print_info "Checking theme structure..."
-BLOCKS_COUNT=$(cat "$THEME_PATH" | jq '.blocks | length')
-if [[ "$BLOCKS_COUNT" -lt 1 ]]; then
-    print_error "Theme doesn't contain any blocks"
-    exit 1
-fi
-print_success "Theme contains $BLOCKS_COUNT blocks"
+# ---------------------------------------------------------------------------
+section "Schema conformance"
+# ---------------------------------------------------------------------------
 
-# Check if essential segments are present
-print_info "Checking for essential segments..."
-SEGMENTS=$(cat "$THEME_PATH" | jq -r '.blocks[].segments[].type' | sort | uniq)
-echo "Found segments: $SEGMENTS"
+VERSION=$(jq -r '.version' "$THEME")
+assert_eq "3" "$VERSION" "theme declares schema version 3"
 
-# Check for specific segments
-for SEGMENT in "os" "session" "path" "git"; do
-    if echo "$SEGMENTS" | grep -q "$SEGMENT"; then
-        print_success "$SEGMENT segment is present"
+assert_eq "3" "$(jq '.blocks | length' "$THEME")" "theme has 3 blocks"
+assert_eq "left"  "$(jq -r '.blocks[0].alignment' "$THEME")" "block 0 is left-aligned"
+assert_eq "right" "$(jq -r '.blocks[1].alignment' "$THEME")" "block 1 is right-aligned"
+assert_eq "true"  "$(jq -r '.blocks[2].newline' "$THEME")"   "block 2 starts on a new line"
+
+for seg in os session path git time text root; do
+    COUNT=$(jq --arg s "$seg" '[.blocks[].segments[] | select(.type == $s)] | length' "$THEME")
+    if [[ "$COUNT" -ge 1 ]]; then
+        pass "segment type '$seg' is present"
     else
-        print_warning "$SEGMENT segment is not present in the theme"
+        fail "segment type '$seg' is present" "not found in theme"
     fi
 done
 
-# Check terminal color support
-print_info "Checking terminal color support..."
-if [[ "$TERM" == *"256color"* ]] || [[ "$COLORTERM" == "truecolor" ]]; then
-    print_success "Terminal supports rich colors (${TERM})"
+# All colours must be 6-digit hex.
+BAD_COLORS=$(jq -r '[.. | strings | select(startswith("#"))] | .[]' "$THEME" \
+             | grep -vE '^#[0-9a-fA-F]{6}$' || true)
+if [[ -z "$BAD_COLORS" ]]; then
+    pass "all colour literals are 6-digit hex"
 else
-    print_warning "Terminal may not support rich colors. Current: ${TERM}"
-    echo "   For best results, use a terminal that supports 24-bit true color"
+    fail "all colour literals are 6-digit hex" "invalid: $BAD_COLORS"
 fi
 
-# Try to render the theme for a preview
-print_header "Theme Preview"
-echo "Primary prompt:"
-oh-my-posh print primary --config "$THEME_PATH"
-echo ""
+# ---------------------------------------------------------------------------
+section "OS segment icon keys"
+# ---------------------------------------------------------------------------
 
-# Check secondary prompt if available 
-if cat "$THEME_PATH" | jq -e '.secondary_prompt' &> /dev/null; then
-    echo "Secondary prompt:"
-    oh-my-posh print secondary --config "$THEME_PATH"
-    echo ""
+# Oh My Posh names the macOS icon property 'macos'. 'darwin' is silently
+# ignored: the segment falls back to a built-in default, so the theme appears
+# to work on a Mac while the configured value does nothing.
+OS_PROPS=$(jq -r '.blocks[0].segments[] | select(.type=="os") | .properties | keys | join(",")' "$THEME")
+assert_contains     "$OS_PROPS" "macos"  "OS segment uses the 'macos' icon key"
+assert_not_contains "$OS_PROPS" "darwin" "OS segment does not use the invalid 'darwin' key"
+assert_contains     "$OS_PROPS" "linux"   "OS segment defines a linux icon"
+assert_contains     "$OS_PROPS" "windows" "OS segment defines a windows icon"
+
+OS_TEMPLATE=$(jq -r '.blocks[0].segments[] | select(.type=="os") | .template' "$THEME")
+assert_contains     "$OS_TEMPLATE" "{{ .Icon }}" "OS segment renders {{ .Icon }}"
+assert_not_contains "$OS_TEMPLATE" ".Os"         "OS segment avoids the removed .Os property"
+
+# ---------------------------------------------------------------------------
+section "No dead configuration"
+# ---------------------------------------------------------------------------
+
+# Properties that Oh My Posh does not recognise are silently discarded. They
+# are misleading to anyone reading the theme and imply behaviour that is absent.
+ROOT_PROPS=$(jq -r '.blocks[0].segments[] | select(.type=="root") | .properties // {} | keys | join(",")' "$THEME")
+assert_eq "" "$ROOT_PROPS" "root segment carries no unsupported properties"
+
+GIT_PROPS=$(jq -r '.blocks[0].segments[] | select(.type=="git") | .properties | keys | join(",")' "$THEME")
+assert_not_contains "$GIT_PROPS" "fetch_stash_count" "git segment omits the unsupported fetch_stash_count"
+assert_contains     "$GIT_PROPS" "fetch_status"      "git segment enables fetch_status"
+
+PATH_PROPS=$(jq -r '.blocks[0].segments[] | select(.type=="path") | .properties | keys | join(",")' "$THEME")
+assert_not_contains "$PATH_PROPS" "folder_icon" "path segment omits folder_icon (inert with style=folder)"
+
+BG_COUNT=$(jq '.blocks[0].segments[] | select(.type=="git") | .background_templates | length' "$THEME")
+assert_eq "4" "$BG_COUNT" "git segment defines 4 dynamic background templates"
+
+# ---------------------------------------------------------------------------
+section "Separator chaining"
+# ---------------------------------------------------------------------------
+
+# The OS segment is a diamond followed by powerline segments. If it also emits
+# a trailing diamond, two separators render back to back with a colour gap
+# between them.
+OS_TRAILING=$(jq -r '.blocks[0].segments[] | select(.type=="os") | .trailing_diamond' "$THEME")
+assert_eq "" "$OS_TRAILING" "OS segment has an empty trailing_diamond (next segment draws the join)"
+
+# ---------------------------------------------------------------------------
+section "Rendering"
+# ---------------------------------------------------------------------------
+
+if ! command -v oh-my-posh >/dev/null 2>&1; then
+    skip "oh-my-posh not installed; skipping render assertions"
+    finish
 fi
 
-# Test real-time segment updates
-print_info "Testing real-time segment updates..."
-echo "This might take a few seconds..."
+RENDER=$(oh-my-posh print primary --config "$THEME" --shell bash 2>&1)
+CLEAN=$(printf '%s' "$RENDER" | strip_ansi)
+
+assert_true "primary prompt renders successfully" \
+    oh-my-posh print primary --config "$THEME" --shell bash
+assert_not_contains "$RENDER" "unable to create text" "no template errors in output"
+assert_not_contains "$RENDER" "<nil>"                 "no nil values leak into output"
+assert_contains     "$CLEAN"  "$(whoami)"             "output contains the current username"
+assert_contains     "$CLEAN"  "❯"                     "output contains the prompt character"
+
+# Count powerline separators (U+E0B0). Two adjacent ones indicate the doubled
+# separator this theme previously rendered after the OS icon.
+DOUBLE=$(printf '%s' "$CLEAN" | python3 -c "
+import sys
+s = sys.stdin.read()
+sep = chr(0xE0B0)
+print('yes' if sep + sep in s.replace(' ', '') else 'no')
+" 2>/dev/null || echo "unknown")
+if [[ "$DOUBLE" == "unknown" ]]; then
+    skip "python3 unavailable; cannot check for doubled separators"
+else
+    assert_eq "no" "$DOUBLE" "no doubled powerline separators in rendered output"
+fi
+
+# ---------------------------------------------------------------------------
+section "Git segment behaviour"
+# ---------------------------------------------------------------------------
+
+TMP_REPO=$(mktemp -d)
+trap 'rm -rf "$TMP_REPO"' EXIT
+
 (
-    export POSH_THEME="$THEME_PATH"
-    # Create a test git repo
-    TMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TMP_DIR"' EXIT
-    cd "$TMP_DIR"
-    git init &> /dev/null
-    touch test.txt
+    cd "$TMP_REPO" || exit 1
+    git init -q
+    git config user.email test@example.com
+    git config user.name "Test"
+    echo one > file.txt
+    git add . && git commit -qm "initial"
+) >/dev/null 2>&1
 
-    # Test git status segment
-    git add . &> /dev/null
-    echo "Git repo with staged changes:"
-    oh-my-posh print primary --config "$THEME_PATH"
-    echo ""
-
-    cd - &> /dev/null
-)
-
-# Print usage instructions
-print_header "Installation Instructions"
-echo "To use this theme, add the following to your shell config file:"
-echo ""
-
-# Detect current shell
-CURRENT_SHELL=$(basename "$SHELL")
-print_info "Detected shell: $CURRENT_SHELL"
-
-# Check if Oh My Posh is already configured in the shell
-if [[ "$CURRENT_SHELL" == "zsh" ]]; then
-    CONFIG_FILE="$HOME/.zshrc"
-    CONFIG_LINE="eval \"\$(oh-my-posh init zsh --config '$THEME_PATH')\""
-    
-    echo "For Zsh (~/.zshrc):"
-    echo "  $CONFIG_LINE"
-    
-    if grep -q "oh-my-posh init" "$CONFIG_FILE" 2>/dev/null; then
-        if grep -q "$THEME_PATH" "$CONFIG_FILE" 2>/dev/null; then
-            print_success "Theme is already configured in your .zshrc"
-        else
-            print_warning "Oh My Posh is configured with a different theme in your .zshrc"
-        fi
-    fi
-    
-elif [[ "$CURRENT_SHELL" == "bash" ]]; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        CONFIG_FILE="$HOME/.bash_profile"
-    else
-        CONFIG_FILE="$HOME/.bashrc"
-    fi
-    CONFIG_LINE="eval \"\$(oh-my-posh init bash --config '$THEME_PATH')\""
-    
-    echo "For Bash ($CONFIG_FILE):"
-    echo "  $CONFIG_LINE"
-    
-    if grep -q "oh-my-posh init" "$CONFIG_FILE" 2>/dev/null; then
-        if grep -q "$THEME_PATH" "$CONFIG_FILE" 2>/dev/null; then
-            print_success "Theme is already configured in your $CONFIG_FILE"
-        else
-            print_warning "Oh My Posh is configured with a different theme in your $CONFIG_FILE"
-        fi
-    fi
+BRANCH_RENDER=$(cd "$TMP_REPO" && oh-my-posh print primary --config "$THEME" --shell bash 2>&1 | strip_ansi)
+if printf '%s' "$BRANCH_RENDER" | grep -qE 'main|master'; then
+    pass "git segment renders the branch name"
+else
+    fail "git segment renders the branch name" "output: $BRANCH_RENDER"
 fi
 
-echo ""
-echo "For PowerShell (\$PROFILE):"
-echo "  oh-my-posh init pwsh --config '$THEME_PATH' | Invoke-Expression"
-echo ""
+# Dirty working tree must change the background colour to burnt sienna.
+(cd "$TMP_REPO" && echo two >> file.txt)
+DIRTY=$(cd "$TMP_REPO" && oh-my-posh print primary --config "$THEME" --shell bash 2>&1)
+assert_contains "$DIRTY" "231;111;81" "dirty repo renders the burnt sienna background (#e76f51)"
 
-# Performance check
-print_header "Performance Check"
-print_info "Testing theme rendering performance..."
-# Use python3 for sub-second precision (portable across macOS and Linux)
-if command -v python3 &> /dev/null; then
-    START_TIME=$(python3 -c "import time; print(time.time())")
-    oh-my-posh print primary --config "$THEME_PATH" > /dev/null
-    END_TIME=$(python3 -c "import time; print(time.time())")
-    RENDERING_TIME=$(python3 -c "print(f'{$END_TIME - $START_TIME:.3f}')")
-    echo "Rendering time: ${RENDERING_TIME}s"
+# Stash count is displayed. .StashCount works without any extra property.
+(cd "$TMP_REPO" && git stash -q) >/dev/null 2>&1
+STASHED=$(cd "$TMP_REPO" && oh-my-posh print primary --config "$THEME" --shell bash 2>&1 | strip_ansi)
+if printf '%s' "$STASHED" | grep -q '1'; then
+    pass "git segment reports a stash entry"
+else
+    fail "git segment reports a stash entry" "output: $STASHED"
+fi
 
-    if python3 -c "exit(0 if $RENDERING_TIME > 0.5 else 1)"; then
-        print_warning "Theme rendering is a bit slow (${RENDERING_TIME}s > 0.5s)"
-        echo "   Consider simplifying complex segments for better performance"
+# Outside a repository the git segment must disappear entirely.
+NON_REPO=$(mktemp -d)
+NO_GIT=$(cd "$NON_REPO" && oh-my-posh print primary --config "$THEME" --shell bash 2>&1)
+rmdir "$NON_REPO" 2>/dev/null || true
+assert_not_contains "$NO_GIT" "30;117;106" "git segment is hidden outside a repository"
+
+# ---------------------------------------------------------------------------
+section "Performance"
+# ---------------------------------------------------------------------------
+
+if command -v python3 >/dev/null 2>&1; then
+    ELAPSED=$(python3 -c "
+import subprocess, time
+start = time.time()
+for _ in range(5):
+    subprocess.run(['oh-my-posh','print','primary','--config','$THEME','--shell','bash'],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+print('%.3f' % ((time.time() - start) / 5))
+")
+    if python3 -c "exit(0 if $ELAPSED < 0.5 else 1)"; then
+        pass "mean render time ${ELAPSED}s is under the 0.5s budget"
     else
-        print_success "Theme rendering is fast (${RENDERING_TIME}s)"
+        fail "mean render time ${ELAPSED}s is under the 0.5s budget" "too slow"
     fi
 else
-    # Fallback: use bash SECONDS (integer-only, less precise)
-    SECONDS=0
-    oh-my-posh print primary --config "$THEME_PATH" > /dev/null
-    RENDERING_TIME=$SECONDS
-    echo "Rendering time: ~${RENDERING_TIME}s"
-
-    if [[ $RENDERING_TIME -gt 0 ]]; then
-        print_warning "Theme rendering is a bit slow (~${RENDERING_TIME}s > 0.5s)"
-        echo "   Consider simplifying complex segments for better performance"
-    else
-        print_success "Theme rendering is fast (<1s)"
-    fi
+    skip "python3 unavailable; skipping performance measurement"
 fi
 
-print_header "Test Complete"
-echo "Your theme is ready to be shared with the community! 🚀"
-echo "For any issues or contributions, please refer to the README.md file." 
+finish

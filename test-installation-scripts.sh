@@ -1,263 +1,260 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Installer behaviour.
+#
+# install.sh is executed against a throwaway HOME and its effects are inspected.
+# The previous version of this file grepped the installer's source for keywords,
+# which reported success while the installer wrote the theme into ~/.bash_profile
+# for users whose login shell was zsh.
+#
+set -uo pipefail
 
-# ANSI color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored messages
-print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}❌ $1${NC}"
-}
-
-print_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
-}
-
-print_header() {
-    echo -e "\n${BLUE}$1${NC}"
-    echo -e "${BLUE}$(printf '=%.0s' {1..50})${NC}"
-}
-
-# Test script for installation scripts in Kartik's Oh My Posh Theme
-print_header "Testing Installation Scripts in Kartik's Oh My Posh Theme"
-
-# Get the absolute path of the directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/test-lib.sh"
 
-# Check if installation scripts exist
-print_info "Checking installation scripts..."
+INSTALL_SH="$SCRIPT_DIR/install.sh"
+INSTALL_PS1="$SCRIPT_DIR/install.ps1"
 
-BASH_SCRIPT="$SCRIPT_DIR/install.sh"
-POWERSHELL_SCRIPT="$SCRIPT_DIR/install.ps1"
+MARKER_BEGIN="# >>> kartikshankar oh-my-posh theme >>>"
 
-if [ ! -f "$BASH_SCRIPT" ]; then
-    print_error "Bash installation script not found at: $BASH_SCRIPT"
-    exit 1
+SANDBOX_ROOT=$(mktemp -d)
+trap 'rm -rf "$SANDBOX_ROOT"' EXIT
+
+# Run install.sh with a private HOME. ZDOTDIR must be overridden too: zsh honours
+# it over $HOME, and leaving it set would send writes to the real home directory.
+run_installer() {
+    local home="$1"; shift
+    mkdir -p "$home"
+    env -u ZDOTDIR HOME="$home" "$@" "$INSTALL_SH" --no-font --local >"$home/.installer.log" 2>&1
+    return $?
+}
+
+# ---------------------------------------------------------------------------
+section "Static checks"
+# ---------------------------------------------------------------------------
+
+assert_file_exists "$INSTALL_SH"  "install.sh exists"
+assert_file_exists "$INSTALL_PS1" "install.ps1 exists"
+assert_true "install.sh is executable" test -x "$INSTALL_SH"
+assert_true "install.sh passes bash -n" bash -n "$INSTALL_SH"
+
+# macOS ships bash 3.2; the installer must parse under it.
+if [[ -x /bin/bash ]]; then
+    assert_true "install.sh parses under /bin/bash (3.2 on macOS)" /bin/bash -n "$INSTALL_SH"
 fi
-print_success "Bash installation script found at: $BASH_SCRIPT"
 
-if [ ! -f "$POWERSHELL_SCRIPT" ]; then
-    print_error "PowerShell installation script not found at: $POWERSHELL_SCRIPT"
-    exit 1
+assert_true "install.sh sets a strict mode" grep -q "set -euo pipefail" "$INSTALL_SH"
+
+# The old installer rewrote every line matching 'oh-my-posh init' with a greedy
+# sed, destroying unrelated user configuration.
+if grep -qE "sed -i.*oh-my-posh init" "$INSTALL_SH"; then
+    fail "install.sh does not rewrite rc files with a greedy sed" "found a sed -i on oh-my-posh lines"
+else
+    pass "install.sh does not rewrite rc files with a greedy sed"
 fi
-print_success "PowerShell installation script found at: $POWERSHELL_SCRIPT"
 
-# Check if the scripts are executable
-print_info "Checking if scripts are executable..."
+# Shell selection must come from the login shell, not from the interpreter
+# running the script (which is always bash).
+if grep -qE 'if \[\[ -n "\$BASH_VERSION" \]\]' "$INSTALL_SH"; then
+    fail "install.sh does not infer the user's shell from \$BASH_VERSION" \
+         "\$BASH_VERSION is always set inside a #!/usr/bin/env bash script"
+else
+    pass "install.sh does not infer the user's shell from \$BASH_VERSION"
+fi
 
-if [ ! -x "$BASH_SCRIPT" ]; then
-    print_warning "Bash script is not executable. Setting permissions..."
-    chmod +x "$BASH_SCRIPT"
-    if [ -x "$BASH_SCRIPT" ]; then
-        print_success "Permissions set successfully"
+if command -v shellcheck >/dev/null 2>&1; then
+    if shellcheck -S error "$INSTALL_SH" >/dev/null 2>&1; then
+        pass "install.sh passes shellcheck (error severity)"
     else
-        print_error "Failed to set permissions"
+        fail "install.sh passes shellcheck (error severity)" "$(shellcheck -S error "$INSTALL_SH" 2>&1 | head -20)"
     fi
 else
-    print_success "Bash script is executable"
+    skip "shellcheck not installed"
 fi
 
-# Check if bundled fonts directory exists
-print_header "Checking Bundled Fonts"
+# ---------------------------------------------------------------------------
+section "CLI contract"
+# ---------------------------------------------------------------------------
 
-FONTS_DIR="$SCRIPT_DIR/fonts"
-print_info "Checking for bundled fonts directory..."
+HELP_OUT=$("$INSTALL_SH" --help 2>&1)
+assert_contains "$HELP_OUT" "--shell"   "--help documents --shell"
+assert_contains "$HELP_OUT" "--dry-run" "--help documents --dry-run"
+assert_not_contains "$HELP_OUT" "set -euo" "--help does not leak script source"
 
-if [ ! -d "$FONTS_DIR" ]; then
-    print_error "Bundled fonts directory not found at: $FONTS_DIR"
+"$INSTALL_SH" --shell tcsh >/dev/null 2>&1
+assert_ne "0" "$?" "an unsupported --shell value exits non-zero"
+
+"$INSTALL_SH" --bogus-flag >/dev/null 2>&1
+assert_ne "0" "$?" "an unknown flag exits non-zero"
+
+# ---------------------------------------------------------------------------
+section "Dry run writes nothing"
+# ---------------------------------------------------------------------------
+
+DRY_HOME="$SANDBOX_ROOT/dry"
+mkdir -p "$DRY_HOME"
+printf 'export EXISTING=1\n' > "$DRY_HOME/.zshrc"
+BEFORE=$(md5 -q "$DRY_HOME/.zshrc" 2>/dev/null || md5sum "$DRY_HOME/.zshrc" | cut -d' ' -f1)
+
+env -u ZDOTDIR HOME="$DRY_HOME" SHELL=/bin/zsh "$INSTALL_SH" \
+    --no-font --local --dry-run >"$DRY_HOME/.log" 2>&1
+
+AFTER=$(md5 -q "$DRY_HOME/.zshrc" 2>/dev/null || md5sum "$DRY_HOME/.zshrc" | cut -d' ' -f1)
+assert_eq "$BEFORE" "$AFTER" "--dry-run leaves the rc file byte-identical"
+assert_true "--dry-run creates no backup files" \
+    bash -c "! ls '$DRY_HOME'/.zshrc.bak-* >/dev/null 2>&1"
+
+# ---------------------------------------------------------------------------
+section "Targets the login shell, not the interpreter"
+# ---------------------------------------------------------------------------
+
+# This is the regression that broke installs on macOS: the script runs under
+# bash, so a naive check configures .bash_profile for a zsh user.
+ZSH_HOME="$SANDBOX_ROOT/zshuser"
+run_installer "$ZSH_HOME" SHELL=/bin/zsh
+assert_true "zsh login shell configures ~/.zshrc" test -f "$ZSH_HOME/.zshrc"
+if [[ -f "$ZSH_HOME/.zshrc" ]] && grep -q "oh-my-posh init zsh" "$ZSH_HOME/.zshrc"; then
+    pass "the zsh rc file receives a 'zsh' init line"
 else
-    print_success "Bundled fonts directory found at: $FONTS_DIR"
-    
-    # Check for font files
-    print_info "Checking for bundled font files..."
-    FONT_COUNT=$(find "$FONTS_DIR" -name "*.ttf" | wc -l)
-    
-    if [ "$FONT_COUNT" -eq 0 ]; then
-        print_error "No font files found in bundled fonts directory"
-    else
-        print_success "Found $FONT_COUNT font files in bundled fonts directory"
-    fi
-    
-    # Check if README exists for the fonts
-    if [ -f "$FONTS_DIR/README.md" ]; then
-        print_success "README file exists for the bundled fonts"
-    else
-        print_warning "No README file for the bundled fonts. Consider adding documentation."
-    fi
+    fail "the zsh rc file receives a 'zsh' init line" "$(cat "$ZSH_HOME/.zshrc" 2>/dev/null)"
 fi
+assert_false "zsh login shell does not touch ~/.bash_profile" test -f "$ZSH_HOME/.bash_profile"
 
-# Check if bash script includes bundled font installation
-print_info "Checking for bundled font installation in bash script..."
-if grep -q "install_bundled_fonts" "$BASH_SCRIPT"; then
-    print_success "Bash script includes bundled font installation function"
-    
-    # Check if the function is used as a fallback
-    if grep -q "Failed.*Trying bundled fonts\|Unable to.*bundled" "$BASH_SCRIPT"; then
-        print_success "Bash script uses bundled fonts as fallback when online installation fails"
-    else
-        print_warning "Bash script might not be using bundled fonts as a fallback properly"
-    fi
+BASH_HOME="$SANDBOX_ROOT/bashuser"
+run_installer "$BASH_HOME" SHELL=/bin/bash
+if [[ -f "$BASH_HOME/.bash_profile" ]] || [[ -f "$BASH_HOME/.bashrc" ]]; then
+    pass "bash login shell configures a bash rc file"
 else
-    print_error "Bash script does not include bundled font installation function"
+    fail "bash login shell configures a bash rc file" "no bash rc file created"
 fi
+assert_false "bash login shell does not touch ~/.zshrc" test -f "$BASH_HOME/.zshrc"
 
-# Check if PowerShell script includes bundled font installation
-print_info "Checking for bundled font installation in PowerShell script..."
-if grep -q "Install-BundledNerdFonts" "$POWERSHELL_SCRIPT"; then
-    print_success "PowerShell script includes bundled font installation function"
-    
-    # Check if the function is used as a fallback
-    if grep -q "Failed.*bundled fonts\|Trying to use bundled" "$POWERSHELL_SCRIPT"; then
-        print_success "PowerShell script uses bundled fonts as fallback when online installation fails"
-    else
-        print_warning "PowerShell script might not be using bundled fonts as a fallback properly"
-    fi
+# --shell overrides detection.
+BOTH_HOME="$SANDBOX_ROOT/both"
+mkdir -p "$BOTH_HOME"
+env -u ZDOTDIR HOME="$BOTH_HOME" SHELL=/bin/zsh "$INSTALL_SH" \
+    --no-font --local --shell all >"$BOTH_HOME/.log" 2>&1
+assert_true "--shell all configures zsh"  test -f "$BOTH_HOME/.zshrc"
+assert_true "--shell all configures bash" bash -c \
+    "test -f '$BOTH_HOME/.bash_profile' -o -f '$BOTH_HOME/.bashrc'"
+
+# ---------------------------------------------------------------------------
+section "Preserves existing configuration"
+# ---------------------------------------------------------------------------
+
+KEEP_HOME="$SANDBOX_ROOT/keep"
+mkdir -p "$KEEP_HOME"
+cat > "$KEEP_HOME/.zshrc" <<'EOF'
+export PATH="$HOME/bin:$PATH"
+alias ll='ls -la'
+eval "$(oh-my-posh init zsh --config ~/some-other-theme.json)"
+export EDITOR=vim
+EOF
+
+run_installer "$KEEP_HOME" SHELL=/bin/zsh
+RC=$(cat "$KEEP_HOME/.zshrc")
+
+assert_contains "$RC" 'export PATH="$HOME/bin:$PATH"' "existing PATH export survives"
+assert_contains "$RC" "alias ll='ls -la'"             "existing alias survives"
+assert_contains "$RC" "export EDITOR=vim"             "existing EDITOR export survives"
+assert_contains "$RC" "some-other-theme.json"         "an unrelated oh-my-posh line is left intact"
+assert_contains "$RC" "$MARKER_BEGIN"                 "our managed block is added"
+
+assert_true "a timestamped backup is written" \
+    bash -c "ls '$KEEP_HOME'/.zshrc.bak-* >/dev/null 2>&1"
+
+LOG=$(cat "$KEEP_HOME/.installer.log")
+assert_contains "$LOG" "another 'oh-my-posh init' line" "a conflicting init line is reported to the user"
+
+# ---------------------------------------------------------------------------
+section "Idempotency"
+# ---------------------------------------------------------------------------
+
+IDEM_HOME="$SANDBOX_ROOT/idem"
+run_installer "$IDEM_HOME" SHELL=/bin/zsh
+FIRST=$(md5 -q "$IDEM_HOME/.zshrc" 2>/dev/null || md5sum "$IDEM_HOME/.zshrc" | cut -d' ' -f1)
+BACKUPS_1=$(ls "$IDEM_HOME"/.zshrc.bak-* 2>/dev/null | wc -l | tr -d ' ')
+
+run_installer "$IDEM_HOME" SHELL=/bin/zsh
+SECOND=$(md5 -q "$IDEM_HOME/.zshrc" 2>/dev/null || md5sum "$IDEM_HOME/.zshrc" | cut -d' ' -f1)
+BACKUPS_2=$(ls "$IDEM_HOME"/.zshrc.bak-* 2>/dev/null | wc -l | tr -d ' ')
+
+assert_eq "$FIRST" "$SECOND" "a second run leaves the rc file unchanged"
+assert_eq "$BACKUPS_1" "$BACKUPS_2" "a second run creates no additional backup"
+
+MARKER_COUNT=$(grep -c "$MARKER_BEGIN" "$IDEM_HOME/.zshrc")
+assert_eq "1" "$MARKER_COUNT" "exactly one managed block exists after two runs"
+
+# ---------------------------------------------------------------------------
+section "Block replacement when the theme path changes"
+# ---------------------------------------------------------------------------
+
+MOVE_HOME="$SANDBOX_ROOT/move"
+run_installer "$MOVE_HOME" SHELL=/bin/zsh
+
+ALT_REPO="$SANDBOX_ROOT/altrepo"
+mkdir -p "$ALT_REPO"
+cp "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/kartikshankar.omp.json" "$ALT_REPO/"
+env -u ZDOTDIR HOME="$MOVE_HOME" SHELL=/bin/zsh "$ALT_REPO/install.sh" \
+    --no-font --local >"$MOVE_HOME/.log2" 2>&1
+
+assert_eq "1" "$(grep -c "$MARKER_BEGIN" "$MOVE_HOME/.zshrc")" \
+    "changing the theme path replaces the block instead of appending one"
+assert_contains "$(cat "$MOVE_HOME/.zshrc")" "$ALT_REPO" "the block points at the new theme path"
+assert_not_contains "$(cat "$MOVE_HOME/.zshrc")" "$SCRIPT_DIR/kartikshankar.omp.json" \
+    "the previous theme path is removed"
+
+# ---------------------------------------------------------------------------
+section "Generated init line is valid shell"
+# ---------------------------------------------------------------------------
+
+INIT_LINE=$(grep "oh-my-posh init zsh" "$IDEM_HOME/.zshrc" | head -1)
+assert_true "the generated zsh init line is syntactically valid" \
+    zsh -n -c "$INIT_LINE"
+
+BASH_LINE=$(grep -h "oh-my-posh init bash" "$BOTH_HOME/.bash_profile" "$BOTH_HOME/.bashrc" 2>/dev/null | head -1)
+if [[ -n "$BASH_LINE" ]]; then
+    assert_true "the generated bash init line is syntactically valid" \
+        bash -n -c "$BASH_LINE"
 else
-    print_error "PowerShell script does not include bundled font installation function"
+    skip "no bash init line to validate"
 fi
 
-# Check Bash script for cross-platform compatibility
-print_header "Checking Bash Script for Cross-Platform Support"
+# ---------------------------------------------------------------------------
+section "install.ps1"
+# ---------------------------------------------------------------------------
 
-print_info "Checking for Git Bash support..."
-if grep -q "msys\|cygwin" "$BASH_SCRIPT"; then
-    print_success "Script includes Git Bash detection"
-else
-    print_error "Script doesn't include Git Bash detection"
-fi
-
-print_info "Checking for WSL support..."
-if grep -q "WSL\|Microsoft" "$BASH_SCRIPT"; then
-    print_success "Script includes WSL detection"
-else
-    print_error "Script doesn't include WSL detection"
-fi
-
-print_info "Checking for shell detection..."
-if grep -q "BASH_VERSION\|ZSH_VERSION" "$BASH_SCRIPT"; then
-    print_success "Script includes shell type detection"
-else
-    print_error "Script doesn't include proper shell detection"
-fi
-
-print_info "Checking configuration file logic..."
-if grep -q "CONFIG_FILE.*bash_profile\|bashrc\|zshrc" "$BASH_SCRIPT"; then
-    print_success "Script handles different shell config files"
-else
-    print_error "Script doesn't handle different shell config files"
-fi
-
-# Check PowerShell script for cross-platform compatibility
-print_header "Checking PowerShell Script for Cross-Platform Support"
-
-print_info "Checking for OS detection..."
-if grep -q "Get-OperatingSystem\|IsWindows\|IsMacOS\|IsLinux" "$POWERSHELL_SCRIPT"; then
-    print_success "Script includes OS detection"
-else
-    print_error "Script doesn't include OS detection"
-fi
-
-print_info "Checking for macOS support..."
-if grep -q "macOS\|Homebrew" "$POWERSHELL_SCRIPT"; then
-    print_success "Script includes macOS support"
-else
-    print_error "Script doesn't include macOS support"
-fi
-
-print_info "Checking for Windows Terminal configuration..."
-if grep -q "WindowsTerminal\|wt.exe" "$POWERSHELL_SCRIPT"; then
-    print_success "Script configures Windows Terminal"
-else
-    print_error "Script doesn't configure Windows Terminal"
-fi
-
-print_info "Checking for Git Bash configuration..."
-if grep -q "Configure-GitBash\|.bashrc" "$POWERSHELL_SCRIPT"; then
-    print_success "Script configures Git Bash"
-else
-    print_error "Script doesn't configure Git Bash"
-fi
-
-print_info "Checking for Command Prompt configuration..."
-if grep -q "Configure-Cmd\|Command Processor" "$POWERSHELL_SCRIPT"; then
-    print_success "Script configures Command Prompt"
-else
-    print_error "Script doesn't configure Command Prompt"
-fi
-
-# Syntax check for bash script
-print_header "Syntax Check for Bash Script"
-
-print_info "Checking bash script syntax..."
-if bash -n "$BASH_SCRIPT"; then
-    print_success "Bash script syntax is valid"
-else
-    print_error "Bash script contains syntax errors"
-    exit 1
-fi
-
-# Syntax check for PowerShell script (if pwsh is available)
-print_header "Syntax Check for PowerShell Script"
-
-if command -v pwsh &> /dev/null; then
-    print_info "Checking PowerShell script syntax..."
-    # Use the PowerShell parser for actual syntax validation
-    PS_ERRORS=$(pwsh -NoProfile -c "
+if command -v pwsh >/dev/null 2>&1; then
+    PS_ERR=$(pwsh -NoProfile -c "
         \$errors = \$null
-        [System.Management.Automation.Language.Parser]::ParseFile('$POWERSHELL_SCRIPT', [ref]\$null, [ref]\$errors) | Out-Null
-        if (\$errors.Count -gt 0) {
-            \$errors | ForEach-Object { Write-Output \$_.Message }
-            exit 1
-        }
-        exit 0
-    " 2>&1)
-    if [ $? -eq 0 ]; then
-        print_success "PowerShell script syntax is valid"
+        [System.Management.Automation.Language.Parser]::ParseFile('$INSTALL_PS1', [ref]\$null, [ref]\$errors) | Out-Null
+        if (\$errors.Count -gt 0) { \$errors | ForEach-Object { \$_.Message }; exit 1 }
+        exit 0" 2>&1)
+    if [[ $? -eq 0 ]]; then
+        pass "install.ps1 parses without syntax errors"
     else
-        print_error "PowerShell script contains syntax errors:"
-        echo "  $PS_ERRORS"
+        fail "install.ps1 parses without syntax errors" "$PS_ERR"
     fi
+
+    # Exercise the profile block editor against a throwaway profile.
+    PS_PROFILE="$SANDBOX_ROOT/profile.ps1"
+    printf "Set-Alias ll Get-ChildItem\n\$env:EDITOR = 'vim'\n" > "$PS_PROFILE"
+
+    pwsh -NoProfile -c "\$PROFILE = '$PS_PROFILE'; . '$INSTALL_PS1' -Local -NoFont" >/dev/null 2>&1
+    PS_CONTENT=$(cat "$PS_PROFILE")
+    assert_contains "$PS_CONTENT" "Set-Alias ll"  "install.ps1 preserves existing profile content"
+    assert_contains "$PS_CONTENT" "$MARKER_BEGIN" "install.ps1 adds its managed block"
+
+    pwsh -NoProfile -c "\$PROFILE = '$PS_PROFILE'; . '$INSTALL_PS1' -Local -NoFont" >/dev/null 2>&1
+    assert_eq "1" "$(grep -c "$MARKER_BEGIN" "$PS_PROFILE")" "install.ps1 is idempotent"
 else
-    print_warning "PowerShell (pwsh) is not installed, skipping syntax check for PowerShell script"
+    skip "pwsh not installed; skipping install.ps1 execution tests"
 fi
 
-# Summary
-print_header "Installation Scripts Test Summary"
+# Native command failures do not raise in PowerShell, so try/catch around them
+# reports success on failure. The installer must check $LASTEXITCODE.
+assert_true "install.ps1 checks \$LASTEXITCODE for native commands" \
+    grep -q 'LASTEXITCODE' "$INSTALL_PS1"
+assert_true "install.ps1 sets Set-StrictMode" grep -q "Set-StrictMode" "$INSTALL_PS1"
 
-ISSUES=0
-# Bash script checks
-if ! grep -q "msys\|cygwin" "$BASH_SCRIPT" || ! grep -q "WSL\|Microsoft" "$BASH_SCRIPT" || ! grep -q "BASH_VERSION\|ZSH_VERSION" "$BASH_SCRIPT" || ! grep -q "CONFIG_FILE.*bash_profile\|bashrc\|zshrc" "$BASH_SCRIPT"; then
-    ISSUES=$((ISSUES + 1))
-fi
-
-# PowerShell script checks
-if ! grep -q "Get-OperatingSystem\|IsWindows\|IsMacOS\|IsLinux" "$POWERSHELL_SCRIPT" || ! grep -q "macOS\|Homebrew" "$POWERSHELL_SCRIPT" || ! grep -q "Configure-GitBash\|.bashrc" "$POWERSHELL_SCRIPT" || ! grep -q "Configure-Cmd\|Command Processor" "$POWERSHELL_SCRIPT"; then
-    ISSUES=$((ISSUES + 1))
-fi
-
-# Bundled font checks
-if [ ! -d "$FONTS_DIR" ] || [ "$FONT_COUNT" -eq 0 ] || ! grep -q "install_bundled_fonts" "$BASH_SCRIPT" || ! grep -q "Install-BundledNerdFonts" "$POWERSHELL_SCRIPT"; then
-    ISSUES=$((ISSUES + 1))
-fi
-
-if [ $ISSUES -eq 0 ]; then
-    print_success "All installation script tests passed! The scripts support multiple platforms and shells."
-else
-    print_warning "Some installation script tests failed. Review the issues above."
-fi
-
-echo ""
-print_info "Note: These tests only check for the presence of cross-platform features."
-print_info "For a complete validation, you should test the scripts on actual target platforms."
-echo "" 
+finish
