@@ -16,3 +16,9 @@ desktop.ini
 
 # Local test scratch
 .installer.log
+
+# Local tool state. These can contain absolute home paths, so keep the rule in
+# the repository rather than relying on a contributor's global gitignore.
+.claude/settings.local.json
+.venv/
+venv/
